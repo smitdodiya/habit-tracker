@@ -13,7 +13,7 @@ npm-debug.log*
 .vscode/
 .idea/
 
-server/exports/
+web/backend/exports/
 
 # Local MongoDB binaries and data, created by scripts/mongo-local.sh
 .mongodb/

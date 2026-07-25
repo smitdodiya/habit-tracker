@@ -1,0 +1,16 @@
+{
+  "name": "@habit-tracker/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure logic shared by the web and mobile clients — no DOM, no React Native.",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./dates": "./src/dates.js",
+    "./format": "./src/format.js",
+    "./templates": "./src/templates.js",
+    "./theme": "./src/theme.js"
+  },
+  "sideEffects": false
+}

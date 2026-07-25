@@ -4,23 +4,25 @@
   "private": true,
   "description": "Habit Tracker — Daily Routine & Reminder App (Asense Branding)",
   "workspaces": [
-    "server",
-    "web"
+    "web/shared",
+    "web/backend",
+    "web/frontend"
   ],
   "scripts": {
-    "dev": "concurrently -n api,web -c magenta,cyan \"npm:dev:server\" \"npm:dev:web\"",
-    "dev:server": "npm run dev --workspace=server",
-    "dev:web": "npm run dev --workspace=web",
-    "build": "npm run build --workspace=web",
-    "seed": "npm run seed --workspace=server",
-    "test": "npm run test --workspace=server",
+    "dev": "concurrently -n api,web -c magenta,cyan \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev --workspace=backend",
+    "dev:web": "npm run dev --workspace=frontend",
+    "mobile": "npm --prefix mobile run start",
+    "mobile:lan": "npm --prefix mobile run start:lan",
+    "mobile:web": "npm --prefix mobile run web",
+    "build": "npm run build --workspace=frontend",
+    "seed": "npm run seed --workspace=backend",
+    "test": "npm run test --workspace=backend",
+    "generate:vapid": "npm run generate:vapid --workspace=backend",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "db:logs": "docker compose logs -f mongo",
     "db:local": "./scripts/mongo-local.sh start",
-    "db:local:stop": "./scripts/mongo-local.sh stop",
-    "db:local:status": "./scripts/mongo-local.sh status",
-    "generate:vapid": "npm run generate:vapid --workspace=server"
+    "db:local:stop": "./scripts/mongo-local.sh stop"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

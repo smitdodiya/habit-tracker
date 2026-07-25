@@ -19,7 +19,7 @@ npm run db:local         # No Docker, no root: downloads MongoDB to ./.mongodb
 
 # 2. Install and seed
 npm install
-cp server/.env.example server/.env
+cp web/backend/.env.example web/backend/.env
 npm run seed             # demo account + 60 days of history
 
 # 3. Run
@@ -39,7 +39,7 @@ Reminder times are saved and work without this, but delivery to a closed tab
 needs Web Push keys. They are self-issued — no account, no third-party service:
 
 ```bash
-npm run generate:vapid --workspace=server   # paste the output into server/.env
+npm run generate:vapid --workspace=backend   # paste the output into web/backend/.env
 ```
 
 ### Testing on a phone
@@ -110,14 +110,14 @@ on the *user's* timezone, not the server's. Storing a UTC timestamp means a
 user in Asia/Kolkata checking in at 23:30 gets filed under tomorrow by a UTC
 server and silently loses a streak. The date key, resolved once at write time
 in the user's timezone, removes that whole class of bug — and makes the heatmap
-an indexed string range scan. See `server/src/utils/date.js`.
+an indexed string range scan. See `web/backend/src/utils/date.js`.
 
 **Streaks are frequency-aware and counted in the habit's own unit.** Daily and
 custom-day habits streak in days; a flexible "3× per week" habit streaks in
 *weeks*, because counting it in days would break the streak on every intended
 off-day. The API returns a `unit` field so the UI always says the right noun.
 An unfinished today never breaks a streak — the day isn't over yet. Rules are
-documented and unit-tested in `server/src/services/streak.service.js`.
+documented and unit-tested in `web/backend/src/services/streak.service.js`.
 
 **Check-in is idempotent.** A unique index on `(habitId, date)` means a
 double-tap or a retried request updates the existing row rather than inflating
@@ -130,7 +130,7 @@ losing a long streak to one bad day is exactly when people quit, and a run you
 can protect is more motivating than one you can only mourn. A frozen day is
 neutral in the maths — it neither breaks nor extends the streak — except that
 habits you *did* complete on a partially-missed day still earn their
-increment. See `server/src/services/freeze.service.js`.
+increment. See `web/backend/src/services/freeze.service.js`.
 
 **XP and the freeze balance are derived, never stored as counters.** This is a
 correctness decision, not tidiness. Because check-in is idempotent, a
@@ -152,7 +152,7 @@ idempotent.
 `--accent` (`#E94560`) is used for fills, chips and chart marks where the 3:1
 non-text threshold applies, and `--accent-strong` (`#D12B47`) wherever the
 colour carries text (5.07:1 behind white, 4.61:1 on the background). They read
-as the same colour. See `web/src/styles/tokens.css`.
+as the same colour. See `web/frontend/src/styles/tokens.css`.
 
 **Dark mode is a second designed palette**, built from the navy family with the
 accent lifted to `#FF6B84` for legibility — not an inversion.
@@ -199,7 +199,7 @@ is a drop-in replacement for the local one), strong `JWT_ACCESS_SECRET` and
 to boot in production on the placeholder development secrets.
 
 Before shipping, remove the demo-credentials panel on the login screen
-(`web/src/pages/Auth.jsx`, marked with a comment).
+(`web/frontend/src/pages/Auth.jsx`, marked with a comment).
 
 ---
 

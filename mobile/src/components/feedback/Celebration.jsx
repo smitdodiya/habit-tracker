@@ -1,0 +1,232 @@
+import { useEffect, useMemo, useRef } from 'react';
+import { View, Text, Modal, StyleSheet, Animated, Easing, Dimensions, AccessibilityInfo } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { Trophy } from 'phosphor-react-native';
+
+import { useTheme } from '../../theme/ThemeProvider.jsx';
+import { Button } from '../ui/Button.jsx';
+
+/**
+ * Check-in and milestone celebrations (brief §05).
+ *
+ * Confetti is hand-rolled with Animated rather than pulled from a library:
+ * canvas-confetti is DOM-only, and a native confetti dependency for one effect
+ * is hard to justify when forty animated views do the job — and stay on the
+ * native driver, so they never stutter against JS work.
+ */
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const PIECE_COUNT = 42;
+
+/** Fires the platform's success haptic — the native equivalent of a sound. */
+export function celebrateHaptic(strong = false) {
+  if (strong) {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  } else {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+  }
+}
+
+/**
+ * A burst of falling confetti. Mounted only while `visible`, so the pieces are
+ * torn down rather than animating invisibly forever.
+ */
+export function ConfettiBurst({ visible, color = '#E94560', onDone }) {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: PIECE_COUNT }, (_, i) => ({
+        key: i,
+        // Deterministic-ish spread without Math.random per frame.
+        x: (i / PIECE_COUNT) * SCREEN_W + ((i * 37) % 40) - 20,
+        delay: (i % 8) * 45,
+        size: 6 + ((i * 13) % 7),
+        rotate: ((i * 47) % 360),
+        drift: (((i * 29) % 80) - 40),
+        color: [color, '#F2C94C', '#27AE60', '#2D9CDB'][i % 4],
+      })),
+    [color],
+  );
+
+  const progress = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useRef(false);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        reduceMotion.current = enabled;
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return undefined;
+
+    // Respect the OS "reduce motion" setting — the streak number still updates,
+    // so no information is carried only by the animation.
+    if (reduceMotion.current) {
+      onDone?.();
+      return undefined;
+    }
+
+    progress.setValue(0);
+    const animation = Animated.timing(progress, {
+      toValue: 1,
+      duration: 1600,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    });
+    animation.start(({ finished }) => finished && onDone?.());
+
+    return () => animation.stop();
+  }, [visible, progress, onDone]);
+
+  if (!visible) return null;
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" accessibilityElementsHidden>
+      {pieces.map((piece) => (
+        <Animated.View
+          key={piece.key}
+          style={{
+            position: 'absolute',
+            left: piece.x,
+            top: -20,
+            width: piece.size,
+            height: piece.size * 1.6,
+            borderRadius: 2,
+            backgroundColor: piece.color,
+            opacity: progress.interpolate({ inputRange: [0, 0.75, 1], outputRange: [1, 1, 0] }),
+            transform: [
+              {
+                translateY: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, SCREEN_H * 0.75],
+                }),
+              },
+              {
+                translateX: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, piece.drift],
+                }),
+              },
+              {
+                rotate: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', `${piece.rotate + 360}deg`],
+                }),
+              },
+            ],
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+const MILESTONE_COPY = {
+  7: { title: 'One week strong', line: 'Seven days in a row. This is where it starts to stick.' },
+  30: { title: 'A full month', line: 'Thirty days. What was effort is becoming routine.' },
+  100: { title: 'One hundred days', line: 'A hundred days of showing up. Genuinely remarkable.' },
+  365: { title: 'A whole year', line: 'Three hundred and sixty-five days. Extraordinary.' },
+  4: { title: 'Four weeks running', line: 'A month of hitting your weekly target.' },
+  12: { title: 'Twelve weeks', line: 'A full quarter of consistency.' },
+  26: { title: 'Half a year', line: 'Twenty-six weeks on target.' },
+  52: { title: 'Fifty-two weeks', line: 'A year of weekly wins.' },
+};
+
+/** Shown when a check-in lands exactly on a milestone. */
+export function MilestoneDialog({ milestone, habit, onClose, onShare }) {
+  const { colors } = useTheme();
+  const scale = useRef(new Animated.Value(0.85)).current;
+
+  useEffect(() => {
+    if (!milestone) return;
+    celebrateHaptic(true);
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 10 }).start();
+  }, [milestone, scale]);
+
+  if (!milestone) return null;
+
+  const unit = habit?.stats?.unit ?? 'day';
+  const copy = MILESTONE_COPY[milestone] ?? {
+    title: `${milestone} ${unit}s in a row`,
+    line: 'Keep the run going.',
+  };
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <View style={styles.milestoneRoot}>
+        <ConfettiBurst visible color={habit?.color} />
+
+        <Animated.View
+          style={[
+            styles.milestoneCard,
+            { backgroundColor: colors.surface, borderColor: colors.border, transform: [{ scale }] },
+          ]}
+        >
+          <View
+            style={[styles.trophyWrap, { backgroundColor: `${habit?.color ?? colors.accent}22` }]}
+          >
+            <Trophy size={30} color={habit?.color ?? colors.accent} weight="fill" />
+          </View>
+
+          <Text style={[styles.milestoneNumber, { color: colors.text }]}>{milestone}</Text>
+          <Text style={[styles.milestoneUnit, { color: colors.accentStrong }]}>
+            {unit === 'week' ? 'WEEK STREAK' : 'DAY STREAK'}
+          </Text>
+
+          <Text style={[styles.milestoneTitle, { color: colors.text }]}>{copy.title}</Text>
+          <Text style={[styles.milestoneLine, { color: colors.textMuted }]}>{copy.line}</Text>
+
+          {habit?.name ? (
+            <Text style={[styles.milestoneHabit, { color: colors.textSubtle }]} numberOfLines={1}>
+              {habit.name}
+            </Text>
+          ) : null}
+
+          <View style={styles.milestoneActions}>
+            {onShare ? (
+              <Button variant="secondary" fullWidth onPress={onShare} style={{ flex: 1 }}>
+                Share
+              </Button>
+            ) : null}
+            <Button fullWidth onPress={onClose} style={{ flex: 1 }}>
+              Keep going
+            </Button>
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  milestoneRoot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(10,10,20,0.6)',
+    paddingHorizontal: 32,
+  },
+  milestoneCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 26,
+    alignItems: 'center',
+  },
+  trophyWrap: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  milestoneNumber: { fontSize: 40, fontFamily: 'Inter_800ExtraBold', letterSpacing: -1, marginTop: 14 },
+  milestoneUnit: { fontSize: 11, fontFamily: 'Inter_700Bold', letterSpacing: 1.4 },
+  milestoneTitle: { fontSize: 16.5, fontFamily: 'Inter_700Bold', marginTop: 12, textAlign: 'center' },
+  milestoneLine: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 19,
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  milestoneHabit: { fontSize: 12, fontFamily: 'Inter_600SemiBold', marginTop: 12 },
+  milestoneActions: { flexDirection: 'row', gap: 10, marginTop: 20, alignSelf: 'stretch' },
+});
