@@ -12,7 +12,13 @@ import { Card } from '../ui/Card.jsx';
  * Both numbers are derived server-side from the user's actual history rather
  * than accumulated in a counter, so a retried check-in can never inflate them.
  */
-export function LevelBar({ progress, onPress }) {
+/**
+ * @param linkToRewards  false on the rewards screen itself, where a "View
+ *                       rewards" link would point at the page you are already
+ *                       on. The card then renders as plain content, not a
+ *                       button, so it doesn't invite a tap that does nothing.
+ */
+export function LevelBar({ progress, linkToRewards = true }) {
   const { colors } = useTheme();
   const router = useRouter();
   const width = useRef(new Animated.Value(0)).current;
@@ -31,8 +37,13 @@ export function LevelBar({ progress, onPress }) {
 
   const toNext = Math.max(0, (progress.nextLevelXp ?? 0) - (progress.xp ?? 0));
 
+  const Wrapper = linkToRewards ? Pressable : View;
+  const wrapperProps = linkToRewards
+    ? { onPress: () => router.push('/achievements'), accessibilityRole: 'button' }
+    : {};
+
   return (
-    <Pressable onPress={onPress ?? (() => router.push('/achievements'))} accessibilityRole="button">
+    <Wrapper {...wrapperProps}>
       <Card>
         <View style={styles.topRow}>
           <View style={[styles.levelChip, { backgroundColor: colors.accentSoft }]}>
@@ -72,13 +83,16 @@ export function LevelBar({ progress, onPress }) {
           <Text style={[styles.hint, { color: colors.textMuted }]}>
             {toNext} XP to level {progress.level + 1}
           </Text>
-          <View style={styles.viewRow}>
-            <Text style={[styles.view, { color: colors.accentStrong }]}>View rewards</Text>
-            <CaretRight size={11} color={colors.accentStrong} weight="bold" />
-          </View>
+
+          {linkToRewards ? (
+            <View style={styles.viewRow}>
+              <Text style={[styles.view, { color: colors.accentStrong }]}>View rewards</Text>
+              <CaretRight size={11} color={colors.accentStrong} weight="bold" />
+            </View>
+          ) : null}
         </View>
       </Card>
-    </Pressable>
+    </Wrapper>
   );
 }
 

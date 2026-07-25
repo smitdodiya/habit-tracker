@@ -63,12 +63,12 @@ export default function SettingsScreen() {
         <SectionTitle>Account</SectionTitle>
         <View style={{ marginTop: 14, gap: 14 }}>
           <Input label="Name" value={name} onChangeText={setName} maxLength={80} />
-          <Input label="Email" value={user?.email ?? ''} editable={false} hint="Your email can't be changed here." />
+          <Input label="Email" value={user?.email ?? ''} editable={false} hint="Email can't be changed here." />
           <Input
             label="Timezone"
             value={user?.timezone ?? 'UTC'}
             editable={false}
-            hint="Detected from your phone. Check-ins and reminders follow this."
+            hint="Check-ins and reminders follow this."
           />
 
           <View style={styles.actionRow}>
@@ -85,7 +85,7 @@ export default function SettingsScreen() {
       <Card>
         <SectionTitle>Appearance</SectionTitle>
         <Text style={[styles.hint, { color: colors.textMuted }]}>
-          Dark mode is a designed palette, not an inversion.
+          Light, dark, or follow your phone.
         </Text>
 
         <View style={styles.themeRow}>
@@ -141,7 +141,7 @@ export default function SettingsScreen() {
               }
             }}
             label="Habit reminders"
-            description="A master switch. Turning this off pauses every reminder without changing your individual times."
+            description="Pauses every reminder without changing your times."
           />
         </View>
       </Card>
@@ -214,7 +214,7 @@ function ChangePasswordSheet({ open, onClose }) {
         value={form.newPassword}
         onChangeText={(v) => setForm((f) => ({ ...f, newPassword: v }))}
         error={errors.newPassword}
-        hint="At least 8 characters, including a letter and a number"
+        hint="8+ characters, with a letter and a number"
         secureTextEntry
         autoCapitalize="none"
         style={{ marginTop: 16 }}

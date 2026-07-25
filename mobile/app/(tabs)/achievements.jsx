@@ -72,7 +72,7 @@ export default function AchievementsScreen() {
         </View>
       ) : (
         <>
-          <LevelBar progress={progress} onPress={() => {}} />
+          <LevelBar progress={progress} linkToRewards={false} />
 
           <Card>
             <SectionTitle>Streak freezes</SectionTitle>
@@ -87,7 +87,7 @@ export default function AchievementsScreen() {
                   <Text style={{ color: colors.textMuted }}> / {progress?.freezes?.max ?? 3}</Text>
                 </Text>
                 <Text style={[styles.freezeHint, { color: colors.textMuted }]}>
-                  Miss a day and one is spent automatically to save your streaks.
+                  Miss a day and one is spent to save your streak.
                 </Text>
               </View>
             </View>
@@ -125,7 +125,7 @@ export default function AchievementsScreen() {
             <SectionTitle>How XP works</SectionTitle>
             <View style={{ marginTop: 12, gap: 9 }}>
               <XpRow amount="+10" label="Every check-in" />
-              <XpRow amount="+5" label="A day where you complete everything due" />
+              <XpRow amount="+5" label="A perfect day" />
               <XpRow amount="+25" label="Reaching a streak milestone" />
             </View>
           </Card>
@@ -183,7 +183,7 @@ function AchievementTile({ achievement }) {
       </Text>
 
       <Text style={[styles.tileDesc, { color: colors.textSubtle }]} numberOfLines={2}>
-        {masked ? 'Keep going to find out' : achievement.description}
+        {masked ? 'Keep going' : achievement.description}
       </Text>
     </View>
   );

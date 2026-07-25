@@ -125,7 +125,7 @@ export function HabitSheet({ open, habit, onClose, onSaved }) {
         open={open}
         onClose={onClose}
         title="New habit"
-        description="Start with a common one, or write your own."
+        description="Pick one, or write your own."
         fullHeight
       >
         <View style={styles.templateGrid}>
@@ -376,7 +376,7 @@ export function HabitSheet({ open, habit, onClose, onSaved }) {
             })}
           </View>
           <Text style={[styles.helper, { color: colors.textMuted }]}>
-            Your streak only counts the days you pick — the rest are days off, not misses.
+            Only the days you pick count. The rest are days off.
           </Text>
         </View>
       ) : null}
@@ -420,7 +420,7 @@ export function HabitSheet({ open, habit, onClose, onSaved }) {
           checked={values.reminder.enabled}
           onChange={(enabled) => setReminder({ enabled })}
           label="Remind me"
-          description="A notification at the time you choose"
+          description="A nudge at the time you choose"
         />
 
         {values.reminder.enabled ? (

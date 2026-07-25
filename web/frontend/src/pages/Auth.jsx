@@ -226,7 +226,7 @@ export function SignupPage() {
           value={form.password}
           onChange={set('password')}
           error={errors.password}
-          hint="Needs 8+ characters, including a letter and a number"
+          hint="8+ characters, with a letter and a number"
           required
         />
 

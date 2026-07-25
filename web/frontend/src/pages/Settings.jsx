@@ -101,14 +101,14 @@ export function SettingsPage() {
             label="Email"
             value={user?.email ?? ''}
             disabled
-            hint="Your email can't be changed here — contact support if you need it moved."
+            hint="Email can't be changed here."
           />
 
           <Input
             label="Timezone"
             value={user?.timezone ?? 'UTC'}
             disabled
-            hint="Detected from your browser. Check-ins and reminders follow this."
+            hint="Check-ins and reminders follow this."
           />
 
           <div className="flex flex-wrap gap-2.5">
@@ -124,7 +124,7 @@ export function SettingsPage() {
       </Section>
 
       {/* ---- Appearance ---- */}
-      <Section title="Appearance" description="Dark mode is a designed palette, not an inversion.">
+      <Section title="Appearance" description="Light, dark, or follow your phone.">
         <div className="grid grid-cols-3 gap-2">
           {[
             { value: 'light', label: 'Light', icon: Sun },
@@ -161,7 +161,7 @@ export function SettingsPage() {
           checked={user?.notificationsEnabled ?? true}
           onChange={handleNotificationPref}
           label="Habit reminders"
-          description="A master switch. Turning this off pauses every reminder without changing your individual times."
+          description="Pauses every reminder without changing your times."
         />
       </Section>
 
@@ -210,8 +210,7 @@ export function SettingsPage() {
 
           <p className="flex items-start gap-1.5 text-xs leading-relaxed text-[var(--text-subtle)]">
             <DownloadSimple size={13} className="mt-0.5 shrink-0" />
-            CSV gives one row per check-in for your own analysis. PDF is a formatted report with streaks,
-            completion rates and your notes.
+            CSV is one row per check-in. PDF is a formatted report.
           </p>
         </div>
       </Section>
@@ -292,7 +291,7 @@ function ChangePasswordModal({ open, onClose }) {
           value={form.newPassword}
           onChange={set('newPassword')}
           error={errors.newPassword}
-          hint="At least 8 characters, including a letter and a number"
+          hint="8+ characters, with a letter and a number"
           required
         />
 
