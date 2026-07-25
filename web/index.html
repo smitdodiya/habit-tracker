@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Build better habits, one day at a time. Track streaks, set reminders, and watch your progress grow." />
+    <meta name="theme-color" content="#1A1A2E" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!--
+      Inter, self-hosted via the Google Fonts CDN. Loaded with preconnect so the
+      first paint is not blocked waiting on the font handshake.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <title>Habit Tracker</title>
+
+    <script>
+      // Applies the saved theme before React mounts, so a dark-mode user never
+      // sees a white flash on load.
+      (function () {
+        try {
+          var stored = localStorage.getItem('habit-tracker-theme');
+          var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var dark = stored === 'dark' || ((!stored || stored === 'system') && prefersDark);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {
+          /* localStorage unavailable — fall back to the light theme */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
