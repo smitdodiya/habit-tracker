@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+coverage/
+
+.env
+.env.local
+.env.*.local
+
+*.log
+npm-debug.log*
+.DS_Store
+.vscode/
+.idea/
+
+server/exports/
+
+# Local MongoDB binaries and data, created by scripts/mongo-local.sh
+.mongodb/

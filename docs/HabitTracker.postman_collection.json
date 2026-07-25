@@ -1,0 +1,469 @@
+{
+  "info": {
+    "name": "Habit Tracker API",
+    "description": "Asense Branding — Habit Tracker REST API.\n\n## Setup\n\n1. Start the stack: `npm run dev`\n2. Run **Auth → Login** first. It saves `accessToken` to the collection variables automatically, and every other request inherits it.\n3. Run **Habits → List habits** to populate `habitId` for the check-in requests.\n\nSeeded accounts:\n- `demo@asensebranding.com` / `Password123`\n- `admin@asensebranding.com` / `Password123` (admin)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api" },
+    { "key": "accessToken", "value": "" },
+    { "key": "habitId", "value": "" },
+    { "key": "email", "value": "demo@asensebranding.com" },
+    { "key": "password", "value": "Password123" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Sign up",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('accessToken', pm.response.json().accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New User\",\n  \"email\": \"new.user@example.com\",\n  \"password\": \"Password123\",\n  \"timezone\": \"Asia/Kolkata\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/signup", "host": ["{{baseUrl}}"], "path": ["auth", "signup"] },
+            "description": "Password must be 8+ characters with at least one letter and one number."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('login succeeds', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('accessToken', pm.response.json().accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "description": "Saves accessToken to collection variables. Also sets the httpOnly refresh cookie."
+          }
+        },
+        {
+          "name": "Refresh access token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  pm.collectionVariables.set('accessToken', pm.response.json().accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] },
+            "description": "Uses the refresh cookie set by Login. Rotates the cookie on every use."
+          }
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Demo User\",\n  \"theme\": \"dark\"\n}" },
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Change password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"Password123\",\n  \"newPassword\": \"NewPassword456\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/change-password", "host": ["{{baseUrl}}"], "path": ["auth", "change-password"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Habits",
+      "item": [
+        {
+          "name": "List habits",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const habits = pm.response.json().habits;",
+                  "  if (habits.length) pm.collectionVariables.set('habitId', habits[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/habits?includeArchived=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["habits"],
+              "query": [{ "key": "includeArchived", "value": "false" }]
+            },
+            "description": "Saves the first habit's id to {{habitId}} for the check-in requests."
+          }
+        },
+        {
+          "name": "Today view",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/habits/today", "host": ["{{baseUrl}}"], "path": ["habits", "today"] },
+            "description": "Every live habit with dueToday, today's check-in, and streak stats. stats.unit is 'day' or 'week' depending on the habit's frequency."
+          }
+        },
+        {
+          "name": "Create habit — daily",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Morning stretch\",\n  \"description\": \"Five minutes before coffee\",\n  \"icon\": \"Sun\",\n  \"color\": \"#E94560\",\n  \"category\": \"morning-routine\",\n  \"frequency\": { \"type\": \"daily\" },\n  \"reminder\": { \"enabled\": true, \"time\": \"07:00\" }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/habits", "host": ["{{baseUrl}}"], "path": ["habits"] }
+          }
+        },
+        {
+          "name": "Create habit — specific days",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Gym\",\n  \"icon\": \"Barbell\",\n  \"color\": \"#27AE60\",\n  \"category\": \"health\",\n  \"frequency\": { \"type\": \"custom\", \"daysOfWeek\": [1, 3, 5] },\n  \"reminder\": { \"enabled\": true, \"time\": \"18:00\" }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/habits", "host": ["{{baseUrl}}"], "path": ["habits"] },
+            "description": "daysOfWeek: 0=Sunday … 6=Saturday. Required when type is 'custom'. Streaks only count the chosen days."
+          }
+        },
+        {
+          "name": "Create habit — X times per week",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Journal\",\n  \"icon\": \"NotePencil\",\n  \"color\": \"#F2994A\",\n  \"category\": \"personal\",\n  \"frequency\": { \"type\": \"weekly\", \"timesPerWeek\": 3 }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/habits", "host": ["{{baseUrl}}"], "path": ["habits"] },
+            "description": "Flexible target. Any 3 days a week counts, and the streak is measured in WEEKS (stats.unit === 'week')."
+          }
+        },
+        {
+          "name": "Get habit detail",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/habits/{{habitId}}", "host": ["{{baseUrl}}"], "path": ["habits", "{{habitId}}"] },
+            "description": "Returns habit, stats, full check-in history and the notes log."
+          }
+        },
+        {
+          "name": "Update habit",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Renamed habit\",\n  \"reminder\": { \"enabled\": true, \"time\": \"20:30\" }\n}" },
+            "url": { "raw": "{{baseUrl}}/habits/{{habitId}}", "host": ["{{baseUrl}}"], "path": ["habits", "{{habitId}}"] }
+          }
+        },
+        {
+          "name": "Reorder habits",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"order\": [\"{{habitId}}\"]\n}" },
+            "url": { "raw": "{{baseUrl}}/habits/reorder", "host": ["{{baseUrl}}"], "path": ["habits", "reorder"] }
+          }
+        },
+        {
+          "name": "Delete habit",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{baseUrl}}/habits/{{habitId}}", "host": ["{{baseUrl}}"], "path": ["habits", "{{habitId}}"] },
+            "description": "Also deletes the habit's entire check-in history."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Check-ins",
+      "item": [
+        {
+          "name": "Check in (today)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl}}/habits/{{habitId}}/checkin", "host": ["{{baseUrl}}"], "path": ["habits", "{{habitId}}", "checkin"] },
+            "description": "The one-tap path. Empty body means today in the user's timezone.\n\nIDEMPOTENT: send it twice and the streak does not double — the unique (habitId, date) index updates the existing row."
+          }
+        },
+        {
+          "name": "Check in with note and mood",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Felt easier than yesterday\",\n  \"mood\": \"good\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/habits/{{habitId}}/checkin", "host": ["{{baseUrl}}"], "path": ["habits", "{{habitId}}", "checkin"] },
+            "description": "mood: great | good | okay | low | tough"
+          }
+        },
+        {
+          "name": "Check in for a past date",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"date\": \"2026-07-20\"\n}" },
+            "url": { "raw": "{{baseUrl}}/habits/{{habitId}}/checkin", "host": ["{{baseUrl}}"], "path": ["habits", "{{habitId}}", "checkin"] },
+            "description": "Future dates and dates before the habit's startDate are rejected with 400."
+          }
+        },
+        {
+          "name": "Undo check-in",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/habits/{{habitId}}/checkin",
+              "host": ["{{baseUrl}}"],
+              "path": ["habits", "{{habitId}}", "checkin"],
+              "query": [{ "key": "date", "value": "", "disabled": true }]
+            },
+            "description": "Defaults to today. Add ?date=YYYY-MM-DD for another day."
+          }
+        },
+        {
+          "name": "List check-ins",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/habits/{{habitId}}/checkins",
+              "host": ["{{baseUrl}}"],
+              "path": ["habits", "{{habitId}}", "checkins"],
+              "query": [
+                { "key": "from", "value": "2026-06-01", "disabled": true },
+                { "key": "to", "value": "2026-07-31", "disabled": true }
+              ]
+            },
+            "description": "Defaults to the last 90 days."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stats",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/stats/dashboard?range=30d",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats", "dashboard"],
+              "query": [{ "key": "range", "value": "30d", "description": "7d | 30d | 90d | 365d" }]
+            },
+            "description": "Heatmap, weekly series, summary and category breakdown in one request."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Export",
+      "item": [
+        {
+          "name": "Export CSV",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/export?format=csv&range=30d",
+              "host": ["{{baseUrl}}"],
+              "path": ["export"],
+              "query": [
+                { "key": "format", "value": "csv" },
+                { "key": "range", "value": "30d" }
+              ]
+            },
+            "description": "One row per check-in. Use Postman's 'Send and Download'."
+          }
+        },
+        {
+          "name": "Export PDF",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/export?format=pdf&range=30d",
+              "host": ["{{baseUrl}}"],
+              "path": ["export"],
+              "query": [
+                { "key": "format", "value": "pdf" },
+                { "key": "range", "value": "30d" }
+              ]
+            },
+            "description": "Formatted report: summary, per-habit streaks, notes log."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Push notifications",
+      "item": [
+        {
+          "name": "Get VAPID public key",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/push/public-key", "host": ["{{baseUrl}}"], "path": ["push", "public-key"] },
+            "description": "enabled:false means no VAPID keys are configured — run `npm run generate:vapid`."
+          }
+        },
+        {
+          "name": "List reminders",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/push/reminders", "host": ["{{baseUrl}}"], "path": ["push", "reminders"] }
+          }
+        },
+        {
+          "name": "Subscribe this device",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endpoint\": \"https://fcm.googleapis.com/fcm/send/EXAMPLE\",\n  \"keys\": {\n    \"p256dh\": \"BExample…\",\n    \"auth\": \"exampleAuth\"\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/push/subscribe", "host": ["{{baseUrl}}"], "path": ["push", "subscribe"] },
+            "description": "Normally called by the browser, not by hand. Upserts on endpoint."
+          }
+        },
+        {
+          "name": "Send test notification",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/push/test", "host": ["{{baseUrl}}"], "path": ["push", "test"] },
+            "description": "400 if the server has no VAPID keys or the account has no subscribed devices."
+          }
+        },
+        {
+          "name": "Unsubscribe device",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"endpoint\": \"https://fcm.googleapis.com/fcm/send/EXAMPLE\"\n}" },
+            "url": { "raw": "{{baseUrl}}/push/subscribe", "host": ["{{baseUrl}}"], "path": ["push", "subscribe"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "description": "Requires role 'admin'. Log in as admin@asensebranding.com first. Non-admins get 403.",
+      "item": [
+        {
+          "name": "Overview",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/admin/overview", "host": ["{{baseUrl}}"], "path": ["admin", "overview"] }
+          }
+        },
+        {
+          "name": "Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/admin/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["admin", "users"],
+              "query": [{ "key": "search", "value": "", "disabled": true }]
+            }
+          }
+        },
+        {
+          "name": "All habits",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/admin/habits", "host": ["{{baseUrl}}"], "path": ["admin", "habits"] }
+          }
+        },
+        {
+          "name": "Recent activity",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/admin/activity", "host": ["{{baseUrl}}"], "path": ["admin", "activity"] }
+          }
+        }
+      ]
+    }
+  ]
+}

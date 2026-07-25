@@ -1,0 +1,35 @@
+{
+  "name": "habit-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Habit Tracker — Daily Routine & Reminder App (Asense Branding)",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c magenta,cyan \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:web": "npm run dev --workspace=web",
+    "build": "npm run build --workspace=web",
+    "seed": "npm run seed --workspace=server",
+    "test": "npm run test --workspace=server",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f mongo",
+    "db:local": "./scripts/mongo-local.sh start",
+    "db:local:stop": "./scripts/mongo-local.sh stop",
+    "db:local:status": "./scripts/mongo-local.sh status",
+    "generate:vapid": "npm run generate:vapid --workspace=server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "esbuild@0.25.12": true
+  }
+}
