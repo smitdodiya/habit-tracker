@@ -79,13 +79,21 @@ export default function TodayScreen() {
     }, [status, refresh]),
   );
 
-  const { due, offSchedule } = useMemo(
-    () => ({
-      due: habits.filter((h) => h.dueToday),
-      offSchedule: habits.filter((h) => !h.dueToday),
-    }),
-    [habits],
-  );
+  const { due, offSchedule } = useMemo(() => {
+    // Outstanding habits float to the top; finished ones settle at the bottom,
+    // so the list is always "what's left" first. Within each group the user's
+    // own order is preserved, so nothing jumps around unpredictably.
+    const byDoneThenOrder = (a, b) => {
+      const aDone = a.checkIn ? 1 : 0;
+      const bDone = b.checkIn ? 1 : 0;
+      return aDone - bDone || (a.order ?? 0) - (b.order ?? 0);
+    };
+
+    return {
+      due: habits.filter((h) => h.dueToday).sort(byDoneThenOrder),
+      offSchedule: habits.filter((h) => !h.dueToday).sort(byDoneThenOrder),
+    };
+  }, [habits]);
 
   const allDone = due.length > 0 && summary.completed === due.length;
 
@@ -228,7 +236,7 @@ export default function TodayScreen() {
           <EmptyState
             illustration={EmptyHabitsIllustration}
             title="No habits yet"
-            description="Add the first thing you want to do consistently. Start with one — you can always add more."
+            description="Start with one thing you want to do consistently."
             action={
               <Button size="lg" icon={Plus} onPress={() => setFormOpen(true)}>
                 Add your first habit
@@ -239,7 +247,7 @@ export default function TodayScreen() {
           <EmptyState
             illustration={AllDoneIllustration}
             title="Nothing scheduled today"
-            description="None of your habits are due today. Enjoy the day off — or tick one off anyway if you're feeling keen."
+            description="Enjoy the day off, or tick one off anyway."
           />
         ) : (
           <View style={styles.list}>

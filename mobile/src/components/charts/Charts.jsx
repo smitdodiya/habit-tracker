@@ -52,7 +52,9 @@ export function HeatmapCalendar({ data = [], todayKey }) {
       const days = [];
       for (let d = 0; d < 7; d += 1) {
         const date = addDays(gridStart, w * 7 + d);
-        const inRange = daysBetween(first, date) >= 0 && daysBetween(date, last) <= 0;
+        // date >= first AND date <= last. daysBetween is positive when the
+        // second argument is later, so both comparisons are >= 0.
+        const inRange = daysBetween(first, date) >= 0 && daysBetween(date, last) >= 0;
         days.push(inRange ? (byDate.get(date) ?? { date, completed: 0, scheduled: 0, rate: 0 }) : null);
       }
       built.push(days);
@@ -116,8 +118,14 @@ export function HeatmapCalendar({ data = [], todayKey }) {
               {weeks.map((week, wi) => (
                 <View key={wi} style={{ gap: GAP }}>
                   {week.map((day, di) => {
+                    // Padding cells outside the range keep the grid square but
+                    // must stay invisible — an outline there would imply a day
+                    // that was tracked and missed.
                     if (!day) return <View key={di} style={{ width: CELL, height: CELL }} />;
+
+                    const level = heatLevel(day);
                     const isToday = day.date === todayKey;
+
                     return (
                       <View
                         key={di}
@@ -130,9 +138,16 @@ export function HeatmapCalendar({ data = [], todayKey }) {
                           width: CELL,
                           height: CELL,
                           borderRadius: 3,
-                          backgroundColor: ramp[heatLevel(day)],
-                          borderWidth: isToday ? 1.5 : 0,
-                          borderColor: colors.text,
+                          backgroundColor: ramp[level],
+                          // Every tracked day gets an outline, so an empty day
+                          // still reads as a day rather than as blank space —
+                          // the grid should show the shape of the whole month.
+                          borderWidth: isToday ? 1.5 : StyleSheet.hairlineWidth,
+                          borderColor: isToday
+                            ? colors.text
+                            : level === 0
+                              ? colors.borderStrong
+                              : 'transparent',
                         }}
                       />
                     );

@@ -263,7 +263,7 @@ export function HabitForm({ initial, onSubmit, onCancel, submitLabel = 'Create h
               })}
             </div>
             <p className="mt-2 text-xs text-[var(--text-muted)]">
-              Your streak only counts the days you pick — the rest are days off, not misses.
+              Only the days you pick count. The rest are days off.
             </p>
           </div>
         )}
@@ -302,7 +302,7 @@ export function HabitForm({ initial, onSubmit, onCancel, submitLabel = 'Create h
             checked={values.reminder.enabled}
             onChange={(enabled) => setReminder({ enabled })}
             label="Remind me"
-            description="A notification at the time you choose"
+            description="A nudge at the time you choose"
           />
 
           {values.reminder.enabled && (
@@ -357,7 +357,7 @@ function TemplatePicker({ onPick, onSkip, onCancel }) {
   return (
     <div>
       <p className="mb-3 text-[0.8125rem] text-[var(--text-muted)]">
-        Start with a common one, or write your own.
+        Pick one, or write your own.
       </p>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

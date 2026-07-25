@@ -14,7 +14,7 @@ export function NotFoundPage() {
       <EmptyState
         illustration={NotFoundIllustration}
         title="This page doesn't exist"
-        description="The link may be out of date, or the page may have moved. Nothing you've tracked is affected."
+        description="The link may be out of date. Your data is safe."
         action={
           <div className="flex flex-wrap justify-center gap-2.5">
             <Button variant="secondary" onClick={() => navigate(-1)}>

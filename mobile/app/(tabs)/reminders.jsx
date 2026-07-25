@@ -34,9 +34,15 @@ export default function RemindersScreen() {
     try {
       const { reminders: list } = await pushApi.reminders();
       setReminders(list);
+      // Rewrite the device's schedule from the server's truth, so a reminder
+      // edited on the web shows up correctly here too.
+      notifications.sync(list).catch(() => {});
+      return list;
     } catch (error) {
       toast.error(errorMessage(error, 'Could not load your reminders'));
+      return [];
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync is stable
   }, []);
 
   useEffect(() => {
@@ -54,6 +60,9 @@ export default function RemindersScreen() {
       await habitApi.update(habitId, {
         reminder: { enabled: patch.enabled ?? target.enabled, time: patch.time ?? target.time },
       });
+
+      const next = previous.map((r) => (r.habitId === habitId ? { ...r, ...patch } : r));
+      await notifications.sync(next);
     } catch (error) {
       setReminders(previous);
       toast.error(errorMessage(error, 'Could not save that reminder'));
@@ -84,7 +93,7 @@ export default function RemindersScreen() {
         title="Reminders"
         subtitle={
           activeCount === 0
-            ? 'Set a nudge for the habits you tend to forget'
+            ? 'Nudges for the habits you forget'
             : `${activeCount} reminder${activeCount === 1 ? '' : 's'} active`
         }
       />
@@ -97,7 +106,7 @@ export default function RemindersScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.stateTitle, { color: colors.text }]}>Needs a real device</Text>
               <Text style={[styles.stateBody, { color: colors.textMuted }]}>
-                Push notifications don't work on a simulator. Your reminder times are still saved.
+                Notifications need a real phone. Your times are still saved.
               </Text>
             </View>
           </View>
@@ -110,7 +119,7 @@ export default function RemindersScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.stateTitle, { color: colors.text }]}>Notifications are on</Text>
                 <Text style={[styles.stateBody, { color: colors.textMuted }]}>
-                  Reminders arrive even when the app is closed.
+                  Reminders will arrive at your chosen times.
                 </Text>
               </View>
             </View>
@@ -142,7 +151,7 @@ export default function RemindersScreen() {
                 loading={notifications.busy}
                 onPress={async () => {
                   await notifications.disable();
-                  toast.info('This device will stop receiving reminders');
+                  toast.info('Reminders turned off');
                 }}
               >
                 Turn off
@@ -155,7 +164,7 @@ export default function RemindersScreen() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.stateTitle, { color: colors.text }]}>Notifications are blocked</Text>
               <Text style={[styles.stateBody, { color: colors.textMuted }]}>
-                Enable them for Habit Tracker in your phone's Settings, then come back.
+                Turn them on in your phone settings, then come back.
               </Text>
             </View>
           </View>
@@ -168,7 +177,7 @@ export default function RemindersScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={[styles.stateTitle, { color: colors.text }]}>Turn on notifications</Text>
                 <Text style={[styles.stateBody, { color: colors.textMuted }]}>
-                  Get a nudge at the time you set for each habit.
+                  Get a nudge at the time you choose.
                 </Text>
               </View>
             </View>
@@ -179,8 +188,12 @@ export default function RemindersScreen() {
               loading={notifications.busy}
               onPress={async () => {
                 try {
-                  await notifications.enable();
-                  toast.success('Notifications on. Reminders will arrive even with the app closed.');
+                  const count = await notifications.enable(reminders);
+                  toast.success(
+                    count > 0
+                      ? `${count} reminder${count === 1 ? '' : 's'} scheduled`
+                      : 'Notifications on',
+                  );
                 } catch (error) {
                   toast.error(error.message ?? 'Could not enable notifications');
                 }
@@ -203,7 +216,7 @@ export default function RemindersScreen() {
         <EmptyState
           illustration={EmptyHabitsIllustration}
           title="No habits to remind you about"
-          description="Add a habit first, then come back to set a reminder time for it."
+          description="Add a habit first, then set its reminder here."
         />
       ) : (
         <View style={{ gap: 10 }}>
@@ -255,8 +268,7 @@ export default function RemindersScreen() {
       )}
 
       <Text style={[styles.footnote, { color: colors.textSubtle }]}>
-        Reminders fire in your own timezone, and are skipped for any habit you've already ticked off that
-        day.
+        Reminders use your phone's clock and repeat every week.
       </Text>
 
       {editingTime ? (

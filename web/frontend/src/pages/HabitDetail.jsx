@@ -234,7 +234,7 @@ export function HabitDetailPage() {
             <NotePencil size={26} className="text-[var(--text-subtle)]" />
             <p className="mt-2 text-sm text-[var(--text-muted)]">No notes yet.</p>
             <p className="mt-0.5 max-w-xs text-xs text-[var(--text-subtle)]">
-              Add a note when you check in to capture how it went.
+              Add a note when you check in.
             </p>
           </div>
         ) : (

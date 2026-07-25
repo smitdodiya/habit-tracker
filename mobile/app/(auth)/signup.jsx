@@ -101,7 +101,7 @@ export default function SignupScreen() {
             value={form.password}
             onChangeText={set('password')}
             error={errors.password}
-            hint="Needs 8+ characters, including a letter and a number"
+            hint="8+ characters, with a letter and a number"
             secureTextEntry
             autoCapitalize="none"
             autoComplete="new-password"

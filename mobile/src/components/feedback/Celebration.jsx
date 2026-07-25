@@ -16,7 +16,14 @@ import { Button } from '../ui/Button.jsx';
  */
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const PIECE_COUNT = 42;
+
+/**
+ * Deliberately restrained. A full-screen shower of confetti on every single
+ * check-in is exhausting by the third habit of the morning — the reward should
+ * register and get out of the way. A dozen small pieces, drifting down over the
+ * top third of the screen, reads as a flourish rather than a party.
+ */
+const PIECE_COUNT = 14;
 
 /** Fires the platform's success haptic — the native equivalent of a sound. */
 export function celebrateHaptic(strong = false) {
@@ -34,16 +41,22 @@ export function celebrateHaptic(strong = false) {
 export function ConfettiBurst({ visible, color = '#E94560', onDone }) {
   const pieces = useMemo(
     () =>
-      Array.from({ length: PIECE_COUNT }, (_, i) => ({
-        key: i,
-        // Deterministic-ish spread without Math.random per frame.
-        x: (i / PIECE_COUNT) * SCREEN_W + ((i * 37) % 40) - 20,
-        delay: (i % 8) * 45,
-        size: 6 + ((i * 13) % 7),
-        rotate: ((i * 47) % 360),
-        drift: (((i * 29) % 80) - 40),
-        color: [color, '#F2C94C', '#27AE60', '#2D9CDB'][i % 4],
-      })),
+      Array.from({ length: PIECE_COUNT }, (_, i) => {
+        // Spread across the middle 70% of the width rather than edge to edge,
+        // so the burst feels centred on the action instead of scattered.
+        const spread = SCREEN_W * 0.7;
+        return {
+          key: i,
+          x: SCREEN_W * 0.15 + (i / (PIECE_COUNT - 1)) * spread + (((i * 37) % 24) - 12),
+          size: 5 + ((i * 13) % 4),
+          rotate: (i * 47) % 360,
+          drift: ((i * 29) % 44) - 22,
+          fall: SCREEN_H * (0.26 + ((i * 17) % 10) / 100),
+          // Two tones only — the habit's own colour plus a warm highlight.
+          // Four competing colours looked like a birthday card.
+          color: i % 3 === 0 ? '#F2C94C' : color,
+        };
+      }),
     [color],
   );
 
@@ -71,36 +84,51 @@ export function ConfettiBurst({ visible, color = '#E94560', onDone }) {
     progress.setValue(0);
     const animation = Animated.timing(progress, {
       toValue: 1,
-      duration: 1600,
-      easing: Easing.out(Easing.quad),
+      duration: 900,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     });
     animation.start(({ finished }) => finished && onDone?.());
 
-    return () => animation.stop();
+    // Unmount on interrupt too, so a rapid second check-in restarts the burst
+    // cleanly instead of leaving orphaned pieces mid-fall.
+    return () => {
+      animation.stop();
+      progress.setValue(0);
+    };
   }, [visible, progress, onDone]);
 
   if (!visible) return null;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none" accessibilityElementsHidden>
+    <View
+      style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
       {pieces.map((piece) => (
         <Animated.View
           key={piece.key}
           style={{
             position: 'absolute',
             left: piece.x,
-            top: -20,
+            // Starts just above the fold rather than off-screen, so the pieces
+            // are visible for the whole (short) animation.
+            top: SCREEN_H * 0.16,
             width: piece.size,
-            height: piece.size * 1.6,
-            borderRadius: 2,
+            height: piece.size,
+            borderRadius: piece.size / 2,
             backgroundColor: piece.color,
-            opacity: progress.interpolate({ inputRange: [0, 0.75, 1], outputRange: [1, 1, 0] }),
+            opacity: progress.interpolate({
+              inputRange: [0, 0.15, 0.7, 1],
+              outputRange: [0, 0.9, 0.7, 0],
+            }),
             transform: [
               {
                 translateY: progress.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, SCREEN_H * 0.75],
+                  outputRange: [0, piece.fall],
                 }),
               },
               {
@@ -110,9 +138,9 @@ export function ConfettiBurst({ visible, color = '#E94560', onDone }) {
                 }),
               },
               {
-                rotate: progress.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', `${piece.rotate + 360}deg`],
+                scale: progress.interpolate({
+                  inputRange: [0, 0.2, 1],
+                  outputRange: [0.4, 1, 0.85],
                 }),
               },
             ],

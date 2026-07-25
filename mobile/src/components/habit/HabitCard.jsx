@@ -42,8 +42,12 @@ export function HabitCard({ habit, onCheckIn, onUndo, onMenu, busy = false }) {
       style={[
         styles.card,
         {
-          backgroundColor: done ? withAlpha(habit.color, 0.08) : colors.surface,
+          // A finished habit recedes rather than being crossed out: flat
+          // surface, no border, dimmed. Strikethrough reads as "cancelled",
+          // which is the wrong feeling for something you just achieved.
+          backgroundColor: done ? colors.surface2 : colors.surface,
           borderColor: done ? 'transparent' : colors.border,
+          opacity: done ? 0.72 : 1,
         },
       ]}
     >
@@ -60,13 +64,7 @@ export function HabitCard({ habit, onCheckIn, onUndo, onMenu, busy = false }) {
         <View style={styles.details}>
           <View style={styles.nameRow}>
             <Text
-              style={[
-                styles.name,
-                {
-                  color: done ? colors.textMuted : colors.text,
-                  textDecorationLine: done ? 'line-through' : 'none',
-                },
-              ]}
+              style={[styles.name, { color: done ? colors.textMuted : colors.text }]}
               numberOfLines={1}
             >
               {habit.name}

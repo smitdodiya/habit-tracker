@@ -25,17 +25,17 @@ const STEPS = [
   {
     Illustration: OnboardingBuildIllustration,
     title: 'Build the routine',
-    body: 'Add the habits that matter to you — daily, certain days, or a few times a week. Check them off with a single tap.',
+    body: 'Daily, certain days, or a few times a week. One tap to check off.',
   },
   {
     Illustration: OnboardingStreakIllustration,
     title: 'Watch the streak grow',
-    body: 'Every day you show up extends your streak. Hit 7, 30 and 100 days and the app will make a fuss about it.',
+    body: 'Show up daily and your streak grows. 7, 30 and 100 days are worth celebrating.',
   },
   {
     Illustration: OnboardingReminderIllustration,
     title: 'Never lose the thread',
-    body: 'Set a reminder for each habit and get a nudge at the right moment — even when the app is closed.',
+    body: 'Set a time for each habit and get a nudge when it matters.',
   },
 ];
 

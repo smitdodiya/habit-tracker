@@ -82,7 +82,7 @@ export function NoteModal({ open, habit, onClose, onSave }) {
 
         <Textarea
           label="Note"
-          placeholder="A line about how it went, what helped, or what got in the way…"
+          placeholder="How did it go?"
           value={note}
           onChange={(event) => setNote(event.target.value)}
           rows={4}

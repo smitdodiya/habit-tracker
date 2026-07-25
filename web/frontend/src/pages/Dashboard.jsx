@@ -69,7 +69,7 @@ export function DashboardPage() {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-[var(--text)]">Progress</h1>
           <p className="mt-0.5 text-sm text-[var(--text-muted)]">
-            How consistently you've shown up
+            How consistently you show up
           </p>
         </div>
 
@@ -112,7 +112,7 @@ export function DashboardPage() {
         <EmptyState
           illustration={EmptyHabitsIllustration}
           title="Nothing to chart yet"
-          description="Once you've added a habit and checked in a few times, your progress will show up here."
+          description="Add a habit and check in a few times to see your progress."
         />
       ) : (
         <>
@@ -147,7 +147,7 @@ export function DashboardPage() {
               <h2 className="text-[0.8125rem] font-bold uppercase tracking-wide text-[var(--text-muted)]">
                 Activity
               </h2>
-              <p className="text-xs text-[var(--text-muted)]">Darker means more of that day's habits done</p>
+              <p className="text-xs text-[var(--text-muted)]">Darker = more done that day</p>
             </div>
 
             <HeatmapCalendar data={data.heatmap} todayKey={data.range.today} />
@@ -161,7 +161,7 @@ export function DashboardPage() {
               </h2>
               <WeeklyBarChart data={data.weekly} />
               <p className="mt-2 text-[0.6875rem] text-[var(--text-subtle)]">
-                The outlined bar is the current week, still in progress.
+                Outlined bar = this week, still going.
               </p>
             </section>
 

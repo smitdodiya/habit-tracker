@@ -73,7 +73,7 @@ export default function DashboardScreen() {
         />
       }
     >
-      <ScreenHeader title="Progress" subtitle="How consistently you've shown up" />
+      <ScreenHeader title="Progress" subtitle="How consistently you show up" />
 
       <View style={[styles.ranges, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         {RANGES.map((option) => {
@@ -106,7 +106,7 @@ export default function DashboardScreen() {
         <EmptyState
           illustration={EmptyHabitsIllustration}
           title="Nothing to chart yet"
-          description="Once you've added a habit and checked in a few times, your progress will show up here."
+          description="Add a habit and check in a few times to see your progress."
         />
       ) : (
         <>
@@ -120,7 +120,7 @@ export default function DashboardScreen() {
           <Card>
             <SectionTitle>Activity</SectionTitle>
             <Text style={[styles.caption, { color: colors.textMuted }]}>
-              Darker means more of that day's habits done
+              Darker = more done that day
             </Text>
             <HeatmapCalendar data={data.heatmap} todayKey={data.range.today} />
           </Card>
@@ -129,7 +129,7 @@ export default function DashboardScreen() {
             <SectionTitle>Check-ins per week</SectionTitle>
             <WeeklyBars data={data.weekly} />
             <Text style={[styles.caption, { color: colors.textSubtle, marginTop: 8 }]}>
-              The outlined bar is the current week, still in progress.
+              Outlined bar = this week, still going.
             </Text>
           </Card>
 

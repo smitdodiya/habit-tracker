@@ -241,7 +241,7 @@ export default function HabitDetailScreen() {
               <NotePencil size={24} color={colors.textSubtle} />
               <Text style={[styles.emptyNotesText, { color: colors.textMuted }]}>No notes yet.</Text>
               <Text style={[styles.emptyNotesHint, { color: colors.textSubtle }]}>
-                Add a note when you check in to capture how it went.
+                Add a note when you check in.
               </Text>
             </View>
           ) : (

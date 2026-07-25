@@ -221,7 +221,7 @@ export function TodayPage() {
         <EmptyState
           illustration={EmptyHabitsIllustration}
           title="No habits yet"
-          description="Add the first thing you want to do consistently. Start with one — you can always add more."
+          description="Start with one thing you want to do consistently."
           action={
             <Button size="lg" onClick={() => setFormOpen(true)}>
               <Plus size={17} weight="bold" />
@@ -233,7 +233,7 @@ export function TodayPage() {
         <EmptyState
           illustration={AllDoneIllustration}
           title="Nothing scheduled today"
-          description="None of your habits are due today. Enjoy the day off — or tick one off anyway if you're feeling keen."
+          description="Enjoy the day off, or tick one off anyway."
         />
       ) : (
         <section aria-label="Habits due today" className="space-y-2.5">
@@ -350,7 +350,7 @@ export function TodayPage() {
         }
       >
         <p className="text-sm leading-relaxed text-[var(--text-muted)]">
-          This also removes its entire check-in history and streak. It cannot be undone.
+          This deletes its history and streak. Can't be undone.
         </p>
       </Modal>
 
