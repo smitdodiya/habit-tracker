@@ -3,9 +3,10 @@ module.exports = function (api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      // Reanimated's plugin has to be last — it rewrites worklets and expects
-      // to see the final AST.
-      'react-native-reanimated/plugin',
+      // Reanimated 4 (SDK 54) moved worklet transformation into its own
+      // package; 'react-native-reanimated/plugin' is a shim for it now.
+      // Must stay last — it rewrites worklets and expects the final AST.
+      'react-native-worklets/plugin',
     ],
   };
 };
