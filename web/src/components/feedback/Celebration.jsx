@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Trophy, X } from '@phosphor-icons/react';
 import { Button } from '../ui/Button.jsx';
+import { ShareCardActions } from '../share/ShareCard.jsx';
 import { pluralise } from '../../lib/format.js';
 
 /**
@@ -79,9 +80,9 @@ export function MilestoneDialog({ milestone, habit, onClose }) {
 
     celebrateMilestone(habit?.color);
 
-    // Auto-dismisses so it never blocks the next check-in, but stays long
-    // enough to be read and enjoyed.
-    const timer = setTimeout(onClose, 5200);
+    // Longer than a toast, because there is a share button to notice — but
+    // still self-dismissing so it never blocks the next check-in.
+    const timer = setTimeout(onClose, 9000);
     return () => clearTimeout(timer);
   }, [milestone, habit?.color, onClose]);
 
@@ -132,7 +133,23 @@ export function MilestoneDialog({ milestone, habit, onClose }) {
           <p className="mt-3 truncate text-xs font-semibold text-[var(--text-subtle)]">{habit.name}</p>
         )}
 
-        <Button variant="primary" fullWidth className="mt-5" onClick={onClose}>
+        {/* Pride is the most shareable emotion — offered at the exact moment
+            it peaks, rather than buried in a menu afterwards. */}
+        {habit?.name && (
+          <div className="mt-5">
+            <ShareCardActions
+              value={milestone}
+              unit={unit === 'week' ? 'week streak' : 'day streak'}
+              habitName={habit.name}
+              subtitle={`${Math.round((habit.stats?.completionRate ?? 0) * 100)}% complete`}
+              ratio={habit.stats?.completionRate ?? 0.92}
+              accent={habit.color ?? '#E94560'}
+              compact
+            />
+          </div>
+        )}
+
+        <Button variant="primary" fullWidth className="mt-2.5" onClick={onClose}>
           Keep going
         </Button>
       </div>

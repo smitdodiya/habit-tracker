@@ -4,7 +4,8 @@
       "Bash(npm install *)",
       "Bash(echo \"--- exit: $? ---\")",
       "Bash(npx vitest *)",
-      "Bash(docker compose *)"
+      "Bash(docker compose *)",
+      "Bash(npm test *)"
     ]
   }
 }

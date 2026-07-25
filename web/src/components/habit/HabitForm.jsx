@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Check } from '@phosphor-icons/react';
+import { Check, PencilSimple, CaretLeft } from '@phosphor-icons/react';
 
 import { Input, Textarea } from '../ui/Input.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Toggle } from '../ui/Toggle.jsx';
 import { ICON_NAMES, getIcon, HABIT_COLORS } from '../../lib/icons.js';
+import { HABIT_TEMPLATES, templateToHabit } from '../../lib/templates.js';
 import { CATEGORIES, WEEKDAY_INITIALS, WEEKDAY_LABELS, withAlpha, readableTextOn } from '../../lib/format.js';
 
 /**
@@ -34,6 +35,32 @@ export function HabitForm({ initial, onSubmit, onCancel, submitLabel = 'Create h
   }));
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState(null);
+
+  // New habits open on the template picker; editing goes straight to the form,
+  // since the habit already exists and templates would be meaningless.
+  const [picking, setPicking] = useState(!initial);
+
+  const applyTemplate = (template) => {
+    setValues({ ...EMPTY, ...templateToHabit(template) });
+    setPicking(false);
+  };
+
+  if (picking) {
+    return (
+      <TemplatePicker
+        onPick={applyTemplate}
+        // "Write my own" clears the form. Someone who picked a template, went
+        // back, and then chose to start fresh means exactly that — leaving the
+        // old template's name and colour behind would be baffling.
+        onSkip={() => {
+          setValues({ ...EMPTY });
+          setLocalError(null);
+          setPicking(false);
+        }}
+        onCancel={onCancel}
+      />
+    );
+  }
 
   const set = (patch) => setValues((current) => ({ ...current, ...patch }));
   const setFrequency = (patch) => set({ frequency: { ...values.frequency, ...patch } });
@@ -299,16 +326,77 @@ export function HabitForm({ initial, onSubmit, onCancel, submitLabel = 'Create h
       </Field>
 
       <div className="flex gap-2.5 pt-1">
-        {onCancel && (
-          <Button type="button" variant="secondary" onClick={onCancel} fullWidth>
-            Cancel
+        {!initial ? (
+          <Button type="button" variant="secondary" onClick={() => setPicking(true)}>
+            <CaretLeft size={14} weight="bold" />
+            Templates
           </Button>
+        ) : (
+          onCancel && (
+            <Button type="button" variant="secondary" onClick={onCancel} fullWidth>
+              Cancel
+            </Button>
+          )
         )}
         <Button type="submit" loading={submitting} fullWidth>
           {submitLabel}
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Starting points for a new habit.
+ *
+ * The blank form is the hardest screen in the app — a new user has to invent a
+ * name, an icon, a colour and a schedule before they've achieved anything.
+ * This turns that into one tap, and everything stays editable afterwards.
+ */
+function TemplatePicker({ onPick, onSkip, onCancel }) {
+  return (
+    <div>
+      <p className="mb-3 text-[0.8125rem] text-[var(--text-muted)]">
+        Start with a common one, or write your own.
+      </p>
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {HABIT_TEMPLATES.map((template) => {
+          const Icon = getIcon(template.icon);
+          return (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => onPick(template)}
+              className="flex flex-col items-center gap-2 rounded-[13px] border border-[var(--border)] p-3 text-center transition-all hover:border-[var(--border-strong)] hover:shadow-[var(--shadow-sm)] active:scale-[0.98]"
+            >
+              <span
+                aria-hidden="true"
+                className="flex h-10 w-10 items-center justify-center rounded-[13px]"
+                style={{ background: withAlpha(template.color, 0.14), color: template.color }}
+              >
+                <Icon size={19} weight="duotone" />
+              </span>
+              <span className="text-[0.75rem] font-bold leading-tight text-[var(--text)]">
+                {template.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex gap-2.5">
+        {onCancel && (
+          <Button type="button" variant="secondary" onClick={onCancel} fullWidth>
+            Cancel
+          </Button>
+        )}
+        <Button type="button" variant="secondary" onClick={onSkip} fullWidth>
+          <PencilSimple size={15} />
+          Write my own
+        </Button>
+      </div>
+    </div>
   );
 }
 

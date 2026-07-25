@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import authRoutes from './auth.routes.js';
 import habitRoutes from './habit.routes.js';
 import statsRoutes from './stats.routes.js';
+import progressRoutes from './progress.routes.js';
 import exportRoutes from './export.routes.js';
 import pushRoutes from './push.routes.js';
 import adminRoutes from './admin.routes.js';
@@ -23,6 +24,7 @@ router.get('/health', (_req, res) => {
 router.use('/auth', authRoutes);
 router.use('/habits', habitRoutes);
 router.use('/stats', statsRoutes);
+router.use('/me', progressRoutes);
 router.use('/export', exportRoutes);
 router.use('/push', pushRoutes);
 router.use('/admin', adminRoutes);

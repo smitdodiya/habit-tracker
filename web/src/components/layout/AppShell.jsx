@@ -8,6 +8,7 @@ import {
   Sun,
   ShieldCheck,
   SignOut,
+  Trophy,
 } from '@phosphor-icons/react';
 
 import { useAuthStore } from '../../store/authStore.js';
@@ -26,6 +27,7 @@ import { BrandMark } from '../illustrations/Illustrations.jsx';
 const NAV_ITEMS = [
   { to: '/today', label: 'Today', icon: House },
   { to: '/dashboard', label: 'Progress', icon: ChartLineUp },
+  { to: '/achievements', label: 'Rewards', icon: Trophy },
   { to: '/reminders', label: 'Reminders', icon: BellRinging },
   { to: '/settings', label: 'Settings', icon: GearSix },
 ];

@@ -13,6 +13,8 @@ import { LoginPage, SignupPage } from './pages/Auth.jsx';
 import { TodayPage } from './pages/Today.jsx';
 import { HabitDetailPage } from './pages/HabitDetail.jsx';
 import { DashboardPage } from './pages/Dashboard.jsx';
+import { AchievementsPage } from './pages/Achievements.jsx';
+import { RecapPage } from './pages/Recap.jsx';
 import { RemindersPage } from './pages/Reminders.jsx';
 import { SettingsPage } from './pages/Settings.jsx';
 import { AdminPage } from './pages/Admin.jsx';
@@ -70,6 +72,8 @@ export default function App() {
         <Route path="/today" element={shell(<TodayPage />)} />
         <Route path="/habits/:id" element={shell(<HabitDetailPage />)} />
         <Route path="/dashboard" element={shell(<DashboardPage />)} />
+        <Route path="/achievements" element={shell(<AchievementsPage />)} />
+        <Route path="/recap" element={shell(<RecapPage />)} />
         <Route path="/reminders" element={shell(<RemindersPage />)} />
         <Route path="/settings" element={shell(<SettingsPage />)} />
 

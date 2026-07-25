@@ -340,6 +340,51 @@
       ]
     },
     {
+      "name": "Progress & rewards",
+      "description": "XP, levels, streak freezes, achievements and insights.\n\nXP and the freeze balance are DERIVED from check-in history, never stored as counters — so a duplicate check-in (which is idempotent) cannot inflate them.",
+      "item": [
+        {
+          "name": "Progress (XP, level, freezes, badges)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/me/progress", "host": ["{{baseUrl}}"], "path": ["me", "progress"] },
+            "description": "xp = 10×checkIns + 5×perfectDays + 25×milestones.\nfreezes.available = min(3, floor(activeDays/7) − used).\n\n`newlyUnlocked` is non-empty only the first time a badge is earned."
+          }
+        },
+        {
+          "name": "Insights",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/me/insights", "host": ["{{baseUrl}}"], "path": ["me", "insights"] },
+            "description": "Strongest/weakest weekday, peak time of day, best habit — over ALL history, not a range.\n\n`ready: false` below 14 lifetime check-ins: a pattern drawn from four data points is worse than none."
+          }
+        },
+        {
+          "name": "Weekly recap",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/me/recap", "host": ["{{baseUrl}}"], "path": ["me", "recap"] },
+            "description": "The week that has finished, never the one in progress."
+          }
+        },
+        {
+          "name": "Dismiss recap banner",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/me/recap/seen", "host": ["{{baseUrl}}"], "path": ["me", "recap", "seen"] }
+          }
+        },
+        {
+          "name": "Today (shows freeze fields)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/habits/today", "host": ["{{baseUrl}}"], "path": ["habits", "today"] },
+            "description": "There is no endpoint to spend a freeze — it happens here automatically.\n\nAny fully-elapsed day in the last 7 where habits were due and missed gets protected, if one is available. `freezeNotices` is returned ONCE and then marked seen, so the 'your streak was saved' message shows exactly one time."
+          }
+        }
+      ]
+    },
+    {
       "name": "Export",
       "item": [
         {

@@ -6,6 +6,13 @@ import { todayKey, addDays } from '../utils/date.js';
 import { isScheduledOn } from '../utils/frequency.js';
 import { computeStreak } from '../services/streak.service.js';
 import { groupDatesByHabit } from '../services/stats.service.js';
+import {
+  getFrozenDates,
+  reconcileFreezes,
+  claimUnseenFreezes,
+  getFreezeBalance,
+} from '../services/freeze.service.js';
+import { buildProgress } from '../services/progress.service.js';
 
 /**
  * Loads a habit that belongs to the requesting user.
@@ -21,21 +28,21 @@ async function findOwnedHabit(habitId, userId) {
 }
 
 /** Attaches streak stats to each habit in one pass over their check-ins. */
-async function withStreaks(habits, userId, today) {
+async function withStreaks(habits, userId, today, frozenDates = null) {
   if (habits.length === 0) return [];
 
-  const checkIns = await CheckIn.find({
-    userId,
-    habitId: { $in: habits.map((h) => h._id) },
-  })
-    .select('habitId date')
-    .lean();
+  const [checkIns, frozen] = await Promise.all([
+    CheckIn.find({ userId, habitId: { $in: habits.map((h) => h._id) } })
+      .select('habitId date')
+      .lean(),
+    frozenDates ?? getFrozenDates(userId),
+  ]);
 
   const datesByHabit = groupDatesByHabit(checkIns);
 
   return habits.map((habit) => ({
     ...habit.toPublicJSON(),
-    stats: computeStreak(habit, datesByHabit.get(habit._id.toString()) ?? new Set(), today),
+    stats: computeStreak(habit, datesByHabit.get(habit._id.toString()) ?? new Set(), today, frozen),
   }));
 }
 
@@ -60,7 +67,12 @@ export const listToday = asyncHandler(async (req, res) => {
     createdAt: 1,
   });
 
-  const enriched = await withStreaks(habits, req.user._id, today);
+  // Spend freezes on any recently missed days before the streaks are read, so
+  // the numbers the user sees already reflect the rescue.
+  await reconcileFreezes(req.user, habits, today);
+  const frozenDates = await getFrozenDates(req.user._id);
+
+  const enriched = await withStreaks(habits, req.user._id, today, frozenDates);
 
   // Today's check-ins carry the note and mood, which the streak summary omits.
   const todayCheckIns = await CheckIn.find({ userId: req.user._id, date: today }).lean();
@@ -79,6 +91,13 @@ export const listToday = asyncHandler(async (req, res) => {
 
   const due = withToday.filter((h) => h.dueToday);
 
+  // Any freeze the user has not been told about yet — shown once, then marked
+  // seen, so the "your streak was saved" moment doesn't repeat forever.
+  const [freezeNotices, freezes] = await Promise.all([
+    claimUnseenFreezes(req.user._id),
+    getFreezeBalance(req.user._id),
+  ]);
+
   res.json({
     date: today,
     habits: withToday,
@@ -88,6 +107,8 @@ export const listToday = asyncHandler(async (req, res) => {
       // Off-schedule habits can still be ticked; they just aren't required.
       extraCompleted: withToday.filter((h) => !h.dueToday && h.checkIn).length,
     },
+    freezes,
+    freezeNotices,
   });
 });
 
@@ -110,8 +131,11 @@ export const getHabit = asyncHandler(async (req, res) => {
   const habit = await findOwnedHabit(req.params.id, req.user._id);
   const today = todayKey(req.user.timezone);
 
-  const checkIns = await CheckIn.find({ habitId: habit._id }).sort({ date: -1 }).lean();
-  const stats = computeStreak(habit, checkIns.map((c) => c.date), today);
+  const [checkIns, frozenDates] = await Promise.all([
+    CheckIn.find({ habitId: habit._id }).sort({ date: -1 }).lean(),
+    getFrozenDates(req.user._id),
+  ]);
+  const stats = computeStreak(habit, checkIns.map((c) => c.date), today, frozenDates);
 
   res.json({
     habit: habit.toPublicJSON(),
@@ -136,11 +160,14 @@ export const updateHabit = asyncHandler(async (req, res) => {
   Object.assign(habit, req.body);
   await habit.save();
 
-  const checkIns = await CheckIn.find({ habitId: habit._id }).select('date').lean();
+  const [checkIns, frozenDates] = await Promise.all([
+    CheckIn.find({ habitId: habit._id }).select('date').lean(),
+    getFrozenDates(req.user._id),
+  ]);
   res.json({
     habit: {
       ...habit.toPublicJSON(),
-      stats: computeStreak(habit, checkIns.map((c) => c.date), todayKey(req.user.timezone)),
+      stats: computeStreak(habit, checkIns.map((c) => c.date), todayKey(req.user.timezone), frozenDates),
     },
   });
 });
@@ -198,10 +225,33 @@ export const checkIn = asyncHandler(async (req, res) => {
     { new: true, upsert: true, setDefaultsOnInsert: true },
   );
 
-  const dates = await CheckIn.find({ habitId: habit._id }).select('date').lean();
-  const stats = computeStreak(habit, dates.map((c) => c.date), today);
+  const [dates, frozenDates] = await Promise.all([
+    CheckIn.find({ habitId: habit._id }).select('date').lean(),
+    getFrozenDates(req.user._id),
+  ]);
+  const stats = computeStreak(habit, dates.map((c) => c.date), today, frozenDates);
 
-  res.status(201).json({ checkIn: record.toPublicJSON(), stats });
+  // Recompute XP and achievements from scratch. Because both are derived from
+  // the stored history, a duplicate check-in — which updated an existing row
+  // rather than inserting one — produces exactly the same numbers, and
+  // `newlyUnlocked` stays empty on the repeat.
+  const progress = await buildProgress(req.user, { persist: true });
+
+  res.status(201).json({
+    checkIn: record.toPublicJSON(),
+    stats,
+    progress: {
+      xp: progress.xp,
+      level: progress.level,
+      title: progress.title,
+      progress: progress.progress,
+      nextLevelXp: progress.nextLevelXp,
+      xpIntoLevel: progress.xpIntoLevel,
+      xpForNextLevel: progress.xpForNextLevel,
+      freezes: progress.freezes,
+    },
+    newlyUnlocked: progress.newlyUnlocked,
+  });
 });
 
 /** DELETE /api/habits/:id/checkin?date=YYYY-MM-DD — undo a check-in. */
@@ -212,8 +262,15 @@ export const undoCheckIn = asyncHandler(async (req, res) => {
   const deleted = await CheckIn.findOneAndDelete({ habitId: habit._id, date });
   if (!deleted) throw ApiError.notFound('No check-in on that date');
 
-  const dates = await CheckIn.find({ habitId: habit._id }).select('date').lean();
-  res.json({ success: true, stats: computeStreak(habit, dates.map((c) => c.date), todayKey(req.user.timezone)) });
+  const [dates, frozenDates] = await Promise.all([
+    CheckIn.find({ habitId: habit._id }).select('date').lean(),
+    getFrozenDates(req.user._id),
+  ]);
+
+  res.json({
+    success: true,
+    stats: computeStreak(habit, dates.map((c) => c.date), todayKey(req.user.timezone), frozenDates),
+  });
 });
 
 /** GET /api/habits/:id/checkins?from&to */

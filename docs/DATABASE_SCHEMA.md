@@ -1,6 +1,13 @@
 # Database Schema
 
-MongoDB (Mongoose). Four collections. Brief §08 deliverable.
+MongoDB (Mongoose). Five collections. Brief §08 deliverable.
+
+**A note on what is deliberately *not* stored:** XP and the streak-freeze
+balance are both derived from check-in history on read, never kept as counters.
+Check-in is idempotent by design — a double-tap updates an existing row — so an
+incremented counter would award XP twice. Deriving them makes that
+structurally impossible, and lets the XP curve or earn rate be retuned without
+a migration.
 
 ---
 
@@ -17,6 +24,9 @@ MongoDB (Mongoose). Four collections. Brief §08 deliverable.
 | `role` | String | `user` \| `admin` |
 | `notificationsEnabled` | Boolean | Master switch; pauses all reminders without clearing individual times |
 | `onboardingComplete` | Boolean | |
+| `achievements` | `[{ key, unlockedAt }]` | Earned badges. Stored (not derived) because they need an `unlockedAt` for the "new!" state and to be celebrated once |
+| `lastReconciledDate` | String | Last day the freeze reconciler has judged, so it never re-walks settled days |
+| `lastRecapSeen` | String | Monday of the last weekly recap dismissed |
 | `lastActiveAt` | Date | |
 | `createdAt` / `updatedAt` | Date | Mongoose timestamps |
 
@@ -111,11 +121,40 @@ reports as gone (HTTP 404/410) are pruned automatically on the next send.
 
 ---
 
+## `streakfreezes`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `_id` | ObjectId | |
+| `userId` | ObjectId → `users` | |
+| `date` | String | `YYYY-MM-DD` — the day being protected |
+| `habitsProtected` | Number | How many habits were rescued, for the notice copy |
+| `seenAt` | Date \| null | Null until the user has been shown the notice |
+| `createdAt` / `updatedAt` | Date | |
+
+**Indexes:** `(userId, date)` **unique**, `userId`
+
+One row per protected day, covering *every* habit due that day — a bad Tuesday
+is one event, and charging a freeze per habit would punish people for having a
+full routine.
+
+### Why applying a freeze is written down
+
+It would be simpler to forgive missed days on the fly during streak
+calculation. It would also be wrong: two identical `GET` requests could then
+return different streaks, and a user's history would quietly rewrite itself.
+Persisting the decision makes it deterministic and auditable — and the unique
+index is what makes the reconcile step idempotent, since running it twice
+cannot spend two freezes on the same date.
+
+---
+
 ## Relationships
 
 ```
 users 1 ──< habits 1 ──< checkins
       1 ──< pushsubscriptions
+      1 ──< streakfreezes
       1 ──< checkins            (denormalised userId, so dashboard range
                                  queries never need a join through habits)
 ```

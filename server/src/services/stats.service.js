@@ -71,11 +71,16 @@ export function buildWeeklySeries(habits, checkInsByDate, startKey, endKey) {
 }
 
 /** Headline numbers for the dashboard summary cards. */
-export function buildSummary(habits, checkIns, checkInsByDate, startKey, endKey, todayKey) {
+export function buildSummary(habits, checkIns, checkInsByDate, startKey, endKey, todayKey, frozenDates = null) {
   const completedByHabit = groupDatesByHabit(checkIns);
 
   const streaks = habits.map((habit) =>
-    computeStreak(habit, completedByHabit.get(habit.id ?? habit._id.toString()) ?? new Set(), todayKey),
+    computeStreak(
+      habit,
+      completedByHabit.get(habit.id ?? habit._id.toString()) ?? new Set(),
+      todayKey,
+      frozenDates,
+    ),
   );
 
   let scheduledTotal = 0;

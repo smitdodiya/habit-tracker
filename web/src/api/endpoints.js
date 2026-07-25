@@ -36,6 +36,13 @@ export const statsApi = {
   dashboard: (range = '30d') => api.get('/stats/dashboard', { params: { range } }).then((r) => r.data),
 };
 
+export const progressApi = {
+  get: () => api.get('/me/progress').then((r) => r.data),
+  insights: () => api.get('/me/insights').then((r) => r.data),
+  recap: () => api.get('/me/recap').then((r) => r.data),
+  markRecapSeen: () => api.post('/me/recap/seen').then((r) => r.data),
+};
+
 export const pushApi = {
   publicKey: () => api.get('/push/public-key').then((r) => r.data),
   reminders: () => api.get('/push/reminders').then((r) => r.data),

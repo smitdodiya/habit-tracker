@@ -142,6 +142,104 @@ Defaults to the last 90 days.
 
 ---
 
+## Progress, rewards & insights 🔒
+
+### `GET /me/progress`
+XP, level, freeze balance and the achievement catalogue.
+
+```jsonc
+{
+  "xp": 2285, "level": 7, "title": "Consistent",
+  "levelStartXp": 2100, "nextLevelXp": 2800,
+  "xpIntoLevel": 185, "xpForNextLevel": 700, "progress": 0.264,
+  "freezes": { "available": 3, "used": 1, "earned": 8, "max": 3,
+               "activeDays": 60, "progress": 4, "progressTarget": 7,
+               "daysToNext": 3 },
+  "perfectDays": 1, "totalCheckIns": 213, "unlockedCount": 9,
+  "achievements": [ { "key": "week-one", "name": "Week One",
+                      "description": "Reach a 7-day streak", "icon": "Fire",
+                      "secret": false, "unlocked": true,
+                      "unlockedAt": "2026-07-25T…" } ],
+  "newlyUnlocked": []
+}
+```
+
+**XP is derived, never stored:**
+`xp = 10×checkIns + 5×perfectDays + 25×milestones`. That is a correctness
+decision, not just tidiness — check-in is idempotent, so a double-tap updates
+the same row. An incremented counter would award it twice; a formula over
+stored history cannot.
+
+**Freezes are derived too:**
+`available = min(3, floor(activeDays / 7) − used)`. Nothing to drift, nothing
+to double-spend.
+
+**`newlyUnlocked`** is non-empty only the first time an achievement is earned,
+so a retried request never re-fires the celebration.
+
+### `GET /me/insights`
+Patterns over *all* history, not the dashboard's selected range.
+
+```jsonc
+{
+  "ready": true, "checkInsNeeded": 0,
+  "weekdays": [ { "day": 1, "label": "Monday", "short": "Mon",
+                  "completed": 42, "scheduled": 56, "rate": 0.75 } ],
+  "timeOfDay": [ { "key": "morning", "label": "in the morning",
+                   "count": 60, "share": 0.28 } ],
+  "bestHabit": { "id": "…", "name": "Morning Meditation", "rate": 0.98 },
+  "insights": [ { "key": "best-day", "icon": "CalendarCheck",
+                  "text": "Saturday is your strongest day — 75% completed." } ]
+}
+```
+
+`ready` is `false` below 14 lifetime check-ins, with `checkInsNeeded`
+counting down. A confident pattern drawn from four data points is worse than
+no pattern, because the user will believe it.
+
+### `GET /me/recap`
+The week that has *finished* — a recap on a Tuesday is not a recap.
+
+```jsonc
+{
+  "week": { "start": "2026-07-13", "end": "2026-07-19" },
+  "seen": false, "hasData": true,
+  "totals": { "checkIns": 26, "scheduled": 36, "completionRate": 0.72,
+              "perfectDays": 0, "notesWritten": 8 },
+  "days": [ { "date": "2026-07-13", "completed": 4, "scheduled": 5 } ],
+  "busiestDay": { "date": "2026-07-15", "completed": 6 },
+  "topHabit": { "name": "Morning Meditation", "count": 7 }
+}
+```
+
+### `POST /me/recap/seen`
+Dismisses the recap banner for the current week.
+
+---
+
+## Streak freezes
+
+There is no endpoint to spend a freeze — it happens automatically. When
+`GET /habits/today` runs, any fully-elapsed day in the last 7 where habits were
+due and missed is protected, if a freeze is available. The response carries:
+
+```jsonc
+{
+  "freezes": { "available": 2, "used": 1, "daysToNext": 3, … },
+  "freezeNotices": [ { "date": "2026-07-24", "habitsProtected": 3 } ]
+}
+```
+
+`freezeNotices` is returned **once** and then marked seen, so the "your streak
+was saved" message shows exactly one time.
+
+In `computeStreak`, a frozen date is neutral when the habit was missed: it
+neither breaks the run nor extends it. A day that was *both* frozen and
+completed still counts as a completion — a freeze covers the whole day, but the
+habits you did complete must keep their increment.
+
+---
+
 ## Stats 🔒
 
 ### `GET /stats/dashboard?range=7d|30d|90d|365d`

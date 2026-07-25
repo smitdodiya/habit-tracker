@@ -13,19 +13,34 @@ export const useHabitStore = create((set, get) => ({
   habits: [],
   date: null,
   summary: { due: 0, completed: 0, extraCompleted: 0 },
+  freezes: null,
+  // Freezes spent since the user last looked, shown once as a notice.
+  freezeNotices: [],
   status: 'idle', // 'idle' | 'loading' | 'ready' | 'error'
   error: null,
 
   loadToday: async ({ quiet = false } = {}) => {
     if (!quiet) set({ status: 'loading', error: null });
     try {
-      const { habits, date, summary } = await habitApi.today();
-      set({ habits, date, summary, status: 'ready', error: null });
+      const { habits, date, summary, freezes, freezeNotices } = await habitApi.today();
+      set({
+        habits,
+        date,
+        summary,
+        freezes: freezes ?? null,
+        // A quiet reload (after saving a habit) must not resurrect a notice
+        // the user has already seen and dismissed.
+        ...(quiet ? {} : { freezeNotices: freezeNotices ?? [] }),
+        status: 'ready',
+        error: null,
+      });
     } catch (error) {
       set({ status: 'error', error });
       throw error;
     }
   },
+
+  dismissFreezeNotices: () => set({ freezeNotices: [] }),
 
   /**
    * Marks a habit done for today.
@@ -55,13 +70,20 @@ export const useHabitStore = create((set, get) => ({
     });
 
     try {
-      const { stats, checkIn } = await habitApi.checkIn(habitId, { note, mood });
+      const response = await habitApi.checkIn(habitId, { note, mood });
+      const { stats, checkIn } = response;
+
       set({
         habits: get().habits.map((habit) =>
           habit.id === habitId ? { ...habit, stats, checkIn } : habit,
         ),
+        // The response also carries the fresh freeze balance.
+        ...(response.progress?.freezes ? { freezes: response.progress.freezes } : {}),
       });
-      return stats;
+
+      // Returned whole so the caller can react to XP, level-ups and any
+      // achievements the server just awarded.
+      return response;
     } catch (error) {
       set({ habits: previous, summary: recomputeSummary(previous) });
       throw error;

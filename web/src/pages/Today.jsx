@@ -1,11 +1,18 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, CheckCircle } from '@phosphor-icons/react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, CheckCircle, Lightning } from '@phosphor-icons/react';
 
 import { useHabitStore } from '../store/habitStore.js';
 import { useAuthStore } from '../store/authStore.js';
+import { useProgressStore } from '../store/progressStore.js';
 import { toast } from '../store/toastStore.js';
 import { errorMessage } from '../api/client.js';
-import { habitApi } from '../api/endpoints.js';
+import { habitApi, progressApi } from '../api/endpoints.js';
+
+import { LevelBar } from '../components/gamification/LevelBar.jsx';
+import { FreezeNotice } from '../components/gamification/FreezeNotice.jsx';
+import { AchievementUnlocked } from '../components/gamification/Achievements.jsx';
+import { RecapBanner } from '../components/gamification/RecapBanner.jsx';
 
 import { HabitCard } from '../components/habit/HabitCard.jsx';
 import { HabitForm } from '../components/habit/HabitForm.jsx';
@@ -27,9 +34,17 @@ import { greeting, formatLongDate } from '../lib/format.js';
  * arguing with them.
  */
 export function TodayPage() {
-  const { habits, date, summary, status, loadToday, checkIn, undoCheckIn, saveNote, removeHabit } =
+  const { habits, date, summary, status, freezes, freezeNotices, loadToday, checkIn, undoCheckIn, saveNote, removeHabit } =
     useHabitStore();
   const user = useAuthStore((state) => state.user);
+  const navigate = useNavigate();
+
+  const progress = useProgressStore((state) => state.progress);
+  const loadProgress = useProgressStore((state) => state.load);
+  const applyCheckInResult = useProgressStore((state) => state.applyCheckInResult);
+  const celebrationQueue = useProgressStore((state) => state.celebrationQueue);
+  const dismissCelebration = useProgressStore((state) => state.dismissCelebration);
+  const [recap, setRecap] = useState(null);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -42,7 +57,10 @@ export function TodayPage() {
 
   useEffect(() => {
     loadToday().catch((error) => toast.error(errorMessage(error, 'Could not load your habits')));
-  }, [loadToday]);
+    loadProgress({ quiet: true }).catch(() => {});
+    // The recap is decoration — if it fails, the page carries on without it.
+    progressApi.recap().then(setRecap).catch(() => {});
+  }, [loadToday, loadProgress]);
 
   const { due, offSchedule } = useMemo(
     () => ({
@@ -57,7 +75,12 @@ export function TodayPage() {
   const handleCheckIn = async (habit) => {
     setBusyId(habit.id);
     try {
-      const stats = await checkIn(habit.id);
+      const { stats, progress: earned, newlyUnlocked } = await checkIn(habit.id);
+
+      // The check-in response already carries the new XP and level, so the
+      // bar moves without a second round trip.
+      applyCheckInResult({ progress: earned, newlyUnlocked });
+
       // The server decides whether this landed on a milestone — the client
       // never guesses, so the celebration can't fire on a stale count.
       if (stats?.milestoneReached) {
@@ -142,6 +165,21 @@ export function TodayPage() {
         </Button>
       </header>
 
+      {/* ---- A freeze saved your streak ---- */}
+      <FreezeNotice
+        notices={freezeNotices}
+        freezes={freezes}
+        onDismiss={useHabitStore.getState().dismissFreezeNotices}
+      />
+
+      {/* ---- Last week in review ---- */}
+      <RecapBanner recap={recap} onDismiss={() => setRecap(null)} />
+
+      {/* ---- Level & freezes ---- */}
+      {habits.length > 0 && (
+        <LevelBar progress={progress} onOpenAchievements={() => navigate('/achievements')} />
+      )}
+
       {/* ---- Day progress ---- */}
       {due.length > 0 && (
         <section className="card p-4" aria-label="Today's progress">
@@ -200,19 +238,21 @@ export function TodayPage() {
       ) : (
         <section aria-label="Habits due today" className="space-y-2.5">
           {due.map((habit) => (
-            <HabitCard
-              key={habit.id}
-              habit={habit}
-              busy={busyId === habit.id}
-              onCheckIn={handleCheckIn}
-              onUndo={handleUndo}
-              onAddNote={setNoteFor}
-              onEdit={(target) => {
-                setEditing(target);
-                setFormOpen(true);
-              }}
-              onDelete={setDeleting}
-            />
+            <div key={habit.id}>
+              <HabitCard
+                habit={habit}
+                busy={busyId === habit.id}
+                onCheckIn={handleCheckIn}
+                onUndo={handleUndo}
+                onAddNote={setNoteFor}
+                onEdit={(target) => {
+                  setEditing(target);
+                  setFormOpen(true);
+                }}
+                onDelete={setDeleting}
+              />
+              <RecordNudge stats={habit.stats} />
+            </div>
           ))}
         </section>
       )}
@@ -321,6 +361,33 @@ export function TodayPage() {
           onClose={() => setMilestone(null)}
         />
       )}
+
+      {/* Achievements are queued and shown one at a time — three arriving at
+          once should feel like three wins, not one confusing pile. */}
+      {celebrationQueue.length > 0 && !milestone && (
+        <AchievementUnlocked achievement={celebrationQueue[0]} onClose={dismissCelebration} />
+      )}
     </div>
+  );
+}
+
+/**
+ * "You're 3 days from your best ever."
+ *
+ * Only shown in the narrow band where it's genuinely motivating: close enough
+ * to be reachable, not so close it appears every single day. A nudge that
+ * fires constantly stops being a nudge.
+ */
+function RecordNudge({ stats }) {
+  if (!stats || stats.current === 0) return null;
+
+  const gap = stats.longest - stats.current;
+  if (gap < 1 || gap > 5) return null;
+
+  return (
+    <p className="mt-1.5 flex items-center gap-1.5 px-3 text-[0.6875rem] font-semibold text-[var(--accent-strong)]">
+      <Lightning size={11} weight="fill" />
+      {gap} {gap === 1 ? 'day' : 'days'} from your best ever ({stats.longest})
+    </p>
   );
 }

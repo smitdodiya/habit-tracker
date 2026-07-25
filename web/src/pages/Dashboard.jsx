@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Fire, Trophy, CheckSquare, Target } from '@phosphor-icons/react';
+import { Fire, Trophy, CheckSquare, Target, Sparkle } from '@phosphor-icons/react';
 
-import { statsApi } from '../api/endpoints.js';
+import { statsApi, progressApi } from '../api/endpoints.js';
 import { errorMessage } from '../api/client.js';
 import { toast } from '../store/toastStore.js';
 
@@ -31,7 +31,14 @@ const RANGES = [
 export function DashboardPage() {
   const [range, setRange] = useState('30d');
   const [data, setData] = useState(null);
+  const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Insights run over all history, so they don't change with the range and
+  // only need fetching once.
+  useEffect(() => {
+    progressApi.insights().then(setInsights).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,6 +177,9 @@ export function DashboardPage() {
             </section>
           </div>
 
+          {/* ---- Insights ---- */}
+          <InsightsPanel insights={insights} />
+
           {/* ---- Category breakdown ---- */}
           {data.categories.length > 0 && (
             <section className="card p-5" aria-label="By category">
@@ -182,6 +192,78 @@ export function DashboardPage() {
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Personal patterns drawn from all history.
+ *
+ * Withheld entirely until there is enough data to support a claim — a
+ * confident "you're strongest on Tuesdays" drawn from four check-ins is worse
+ * than saying nothing, because the user will believe it.
+ */
+function InsightsPanel({ insights }) {
+  if (!insights) return null;
+
+  if (!insights.ready) {
+    return (
+      <section className="card p-5" aria-label="Insights">
+        <h2 className="mb-2 text-[0.8125rem] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+          Insights
+        </h2>
+        <p className="text-[0.8125rem] leading-relaxed text-[var(--text-muted)]">
+          {insights.checkInsNeeded} more check-in{insights.checkInsNeeded === 1 ? '' : 's'} and we'll start
+          spotting your patterns — which days you're strongest, when you tend to check in, and which habit
+          is carrying you.
+        </p>
+      </section>
+    );
+  }
+
+  if (insights.insights.length === 0) return null;
+
+  return (
+    <section className="card p-5" aria-label="Insights">
+      <h2 className="mb-3.5 text-[0.8125rem] font-bold uppercase tracking-wide text-[var(--text-muted)]">
+        Insights
+      </h2>
+
+      <ul className="space-y-2.5">
+        {insights.insights.map((insight) => (
+          <li key={insight.key} className="flex items-start gap-2.5">
+            <span
+              aria-hidden="true"
+              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent-strong)]"
+            >
+              <Sparkle size={12} weight="fill" />
+            </span>
+            <p className="text-[0.8125rem] leading-relaxed text-[var(--text)]">{insight.text}</p>
+          </li>
+        ))}
+      </ul>
+
+      {/* Weekday bars give the numbers behind the sentences. */}
+      {insights.weekdays && (
+        <div className="mt-4 border-t border-[var(--border)] pt-4">
+          <div className="flex items-end gap-1.5" style={{ height: 64 }}>
+            {insights.weekdays.map((day) => (
+              <div key={day.day} className="flex flex-1 flex-col items-center gap-1.5">
+                <div className="flex w-full flex-1 items-end">
+                  <div
+                    className="w-full rounded-t-[4px] bg-[var(--accent)] transition-all duration-500"
+                    style={{ height: `${day.rate * 100}%`, minHeight: day.rate > 0 ? 3 : 0 }}
+                    title={`${day.label}: ${Math.round(day.rate * 100)}%`}
+                  />
+                </div>
+                <span className="text-[0.625rem] font-semibold text-[var(--text-muted)]">
+                  {day.short}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

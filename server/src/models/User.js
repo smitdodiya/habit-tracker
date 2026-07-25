@@ -27,6 +27,33 @@ const userSchema = new mongoose.Schema(
     notificationsEnabled: { type: Boolean, default: true },
     onboardingComplete: { type: Boolean, default: false },
 
+    /**
+     * Earned achievements. Stored rather than derived because they need an
+     * `unlockedAt` to drive the "new!" state and to be celebrated exactly once.
+     * Evaluation stays idempotent — see gamification.service.js.
+     *
+     * XP and freeze balance are deliberately NOT stored here: both are derived
+     * from check-in history, so an idempotent double check-in cannot inflate
+     * them.
+     */
+    achievements: {
+      type: [
+        {
+          _id: false,
+          key: { type: String, required: true },
+          unlockedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+
+    // Last day the freeze reconciler has judged, so it never re-walks days it
+    // has already settled. 'YYYY-MM-DD' in the user's timezone.
+    lastReconciledDate: { type: String, default: null },
+
+    // Last weekly recap the user dismissed, keyed by the week's Monday.
+    lastRecapSeen: { type: String, default: null },
+
     lastActiveAt: { type: Date, default: Date.now },
   },
   { timestamps: true },

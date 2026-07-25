@@ -123,6 +123,29 @@ documented and unit-tested in `server/src/services/streak.service.js`.
 double-tap or a retried request updates the existing row rather than inflating
 the streak.
 
+**Streak freezes forgive one bad day.** You earn one every 7 active days
+(max 3), and it's spent automatically when a day is missed, so a 60-day streak
+survives. This is the single most important retention feature in the app:
+losing a long streak to one bad day is exactly when people quit, and a run you
+can protect is more motivating than one you can only mourn. A frozen day is
+neutral in the maths — it neither breaks nor extends the streak — except that
+habits you *did* complete on a partially-missed day still earn their
+increment. See `server/src/services/freeze.service.js`.
+
+**XP and the freeze balance are derived, never stored as counters.** This is a
+correctness decision, not tidiness. Because check-in is idempotent, a
+double-tap updates the same row; an `$inc`-style XP counter would award it
+twice. A formula over stored history — `xp = 10×checkIns + 5×perfectDays +
+25×milestones` — cannot double-count, and the curve can be retuned without a
+migration. Achievements *are* stored, since they need an `unlockedAt`, but are
+evaluated idempotently so a badge is only ever celebrated once.
+
+**Applying a freeze is written down, not computed on read.** Forgiving missed
+days on the fly during streak calculation would mean two identical `GET`
+requests could return different streaks. A `StreakFreeze` row makes it
+deterministic, and its unique `(userId, date)` index makes the reconcile step
+idempotent.
+
 **The accent colour is split into three roles.** The brief specifies `#E94560`
 *and* WCAG AA. That colour only reaches 3.5:1 on the off-white background and
 3.85:1 behind white text — both below the 4.5:1 threshold for body text. So
@@ -145,13 +168,15 @@ caching bought nothing and cost correctness.
 ## Testing
 
 ```bash
-npm test                 # 19 unit tests over the streak rules
+npm test                 # 51 unit tests: streak rules + gamification
 ```
 
 The streak service has unit tests because it is the one place where a subtle
 bug is invisible until it costs someone a streak they actually earned: the
 grace period for an unfinished day, custom-day scheduling, weekly proration,
-and milestone detection are all pinned down.
+frozen days, and milestone detection are all pinned down. The gamification
+tests pin the level curve and, importantly, that a duplicate check-in cannot
+inflate XP or re-fire an achievement.
 
 Beyond that, the app was driven end to end in a real browser: onboarding,
 signup validation, habit CRUD, check-in/undo/idempotency, notes, reminders,
@@ -199,3 +224,18 @@ Before shipping, remove the demo-credentials panel on the login screen
 | Admin panel | Done (read-only) |
 | API docs / Postman | `docs/` |
 | Mobile apps (iOS / Android) | Not in scope for this build |
+
+## Beyond the brief
+
+Added to make the app one people actually return to:
+
+| Feature | What it does |
+| --- | --- |
+| **Streak freezes** | Earn one per 7 active days (max 3); spent automatically to save a missed day |
+| **XP & levels** | Derived from history, with title bands from Getting Started to Unstoppable |
+| **14 achievements** | Including secret ones shown as "???" until earned |
+| **Share cards** | 1080×1350 PNG generated on canvas, straight to WhatsApp/Instagram via the Web Share API |
+| **Weekly recap** | Last week in review at `/recap`, with a once-per-week banner |
+| **Habit templates** | 12 ready-made habits, so a new user never faces a blank form |
+| **Record nudges** | "3 days from your best ever", shown only within 5 days of a record |
+| **Insights** | Strongest weekday, peak time of day, most consistent habit — withheld below 14 check-ins |

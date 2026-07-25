@@ -16,6 +16,7 @@ import { connectDatabase, disconnectDatabase } from '../config/db.js';
 import { User } from '../models/User.js';
 import { Habit } from '../models/Habit.js';
 import { CheckIn } from '../models/CheckIn.js';
+import { StreakFreeze } from '../models/StreakFreeze.js';
 import { todayKey, addDays, dayOfWeek, rangeKeys } from '../utils/date.js';
 import { isScheduledOn } from '../utils/frequency.js';
 import { logger } from '../utils/logger.js';
@@ -195,17 +196,30 @@ async function seedHabitsFor(user, today) {
       if (!inPerfectRun && random() > blueprint.probability) continue;
 
       const roll = random();
+
+      // Stamp each check-in near the habit's own reminder time, with a little
+      // jitter. Without this every row shares the seed script's timestamp and
+      // the time-of-day insight reports a meaningless 100%.
+      const [hour, minute] = blueprint.reminder.time.split(':').map(Number);
+      const jitter = Math.round((random() - 0.5) * 90); // ±45 minutes
+      const createdAt = new Date(`${date}T00:00:00.000Z`);
+      createdAt.setUTCMinutes(hour * 60 + minute + jitter - 330); // 330 = IST offset
+
       checkIns.push({
         userId: user._id,
         habitId: habit._id,
         date,
         note: roll < blueprint.noteChance ? pick(NOTES[blueprint.key], random) : '',
         mood: roll < blueprint.noteChance ? pick(MOODS, random) : null,
+        createdAt,
+        updatedAt: createdAt,
       });
     }
   }
 
-  await CheckIn.insertMany(checkIns);
+  // timestamps: false so Mongoose keeps the back-dated createdAt values above
+  // rather than stamping every row with the moment the seed ran.
+  await CheckIn.insertMany(checkIns, { timestamps: false });
   return { habits, checkIns };
 }
 
@@ -222,7 +236,11 @@ async function run() {
   const previous = await User.find({ email: { $in: [DEMO_EMAIL, ADMIN_EMAIL] } }).select('_id');
   if (previous.length > 0) {
     const ids = previous.map((u) => u._id);
-    await Promise.all([CheckIn.deleteMany({ userId: { $in: ids } }), Habit.deleteMany({ userId: { $in: ids } })]);
+    await Promise.all([
+      CheckIn.deleteMany({ userId: { $in: ids } }),
+      Habit.deleteMany({ userId: { $in: ids } }),
+      StreakFreeze.deleteMany({ userId: { $in: ids } }),
+    ]);
   }
 
   const demo = await seedUser({
@@ -242,7 +260,21 @@ async function run() {
     timezone: 'Asia/Kolkata',
   });
 
+  // One freeze already spent, a fortnight back. Far enough that it will not
+  // fire the "your streak was saved" notice on first load — the demo should
+  // show the mechanic existing, not stage a rescue that never happened.
+  const spentOn = addDays(today, -13);
+  await StreakFreeze.create({
+    userId: demo._id,
+    date: spentOn,
+    habitsProtected: 2,
+    seenAt: new Date(),
+  });
+  demo.lastReconciledDate = addDays(today, -1);
+  await demo.save();
+
   logger.info(`Seeded ${habits.length} habits and ${checkIns.length} check-ins over ${HISTORY_DAYS} days`);
+  logger.info(`One streak freeze already spent on ${spentOn}`);
   logger.info('');
   logger.info('  Demo account   ' + DEMO_EMAIL + '  /  ' + PASSWORD);
   logger.info('  Admin account  ' + ADMIN_EMAIL + '  /  ' + PASSWORD);

@@ -19,6 +19,19 @@
  * still has time, so a habit due today but not yet ticked keeps yesterday's
  * streak intact — it just doesn't add to it. The same applies to the current,
  * in-progress week for weekly habits.
+ *
+ * Frozen days
+ * -----------
+ * A day protected by a streak freeze is *neutral* when the habit was missed:
+ * it neither breaks the run nor extends it, so `Mon ✓ · Tue ❄️ · Wed ✓` is an
+ * unbroken streak of two.
+ *
+ * The subtlety is a partially-missed day. A freeze covers the whole day, but
+ * the habits you actually did complete must still earn their increment —
+ * otherwise spending a freeze would penalise the very habits you kept up. So
+ * completion is always checked first, and the freeze only applies to a miss.
+ * Forgiven days are also excluded from the completion rate rather than
+ * counted as failures.
  */
 
 import { daysBetween } from '../utils/date.js';
@@ -32,13 +45,15 @@ export const WEEK_MILESTONES = [4, 12, 26, 52];
  * @param habit                  a Habit document (or plain object of the same shape)
  * @param completedKeys          iterable of 'YYYY-MM-DD' keys the habit was completed on
  * @param todayKey               today's date key in the user's timezone
+ * @param frozenKeys             iterable of date keys protected by a streak freeze
  * @returns {{current:number, longest:number, unit:'day'|'week', total:number,
  *            completionRate:number, nextMilestone:number|null,
  *            milestoneReached:number|null, completedToday:boolean,
  *            scheduledToday:boolean}}
  */
-export function computeStreak(habit, completedKeys, todayKey) {
+export function computeStreak(habit, completedKeys, todayKey, frozenKeys = null) {
   const done = completedKeys instanceof Set ? completedKeys : new Set(completedKeys);
+  const frozen = frozenKeys instanceof Set ? frozenKeys : new Set(frozenKeys ?? []);
   const startKey = habit.startDate;
 
   const scheduledToday = isScheduledOn(habit, todayKey);
@@ -51,8 +66,8 @@ export function computeStreak(habit, completedKeys, todayKey) {
 
   const isWeekly = (habit.frequency?.type ?? 'daily') === 'weekly';
   const result = isWeekly
-    ? weeklyStreak(habit, done, startKey, todayKey)
-    : dailyStreak(habit, done, startKey, todayKey);
+    ? weeklyStreak(habit, done, frozen, startKey, todayKey)
+    : dailyStreak(habit, done, frozen, startKey, todayKey);
 
   const milestones = isWeekly ? WEEK_MILESTONES : DAY_MILESTONES;
 
@@ -70,18 +85,23 @@ export function computeStreak(habit, completedKeys, todayKey) {
 }
 
 /** Consecutive completed scheduled days, walking back from today. */
-function dailyStreak(habit, done, startKey, todayKey) {
+function dailyStreak(habit, done, frozen, startKey, todayKey) {
   const scheduled = scheduledKeysBetween(habit, startKey, todayKey);
 
   let longest = 0;
   let run = 0;
   let completedCount = 0;
+  let forgivenCount = 0;
 
   for (const key of scheduled) {
+    // Completion is checked before the freeze: on a partially-missed day the
+    // habits that were done still earn their increment.
     if (done.has(key)) {
       run += 1;
       completedCount += 1;
       if (run > longest) longest = run;
+    } else if (frozen.has(key)) {
+      forgivenCount += 1; // neutral — carries the run without extending it
     } else {
       run = 0;
     }
@@ -92,20 +112,26 @@ function dailyStreak(habit, done, startKey, todayKey) {
   if (index >= 0 && scheduled[index] === todayKey && !done.has(todayKey)) index -= 1;
 
   let current = 0;
-  while (index >= 0 && done.has(scheduled[index])) {
-    current += 1;
+  while (index >= 0) {
+    const key = scheduled[index];
+    if (done.has(key)) current += 1;
+    else if (!frozen.has(key)) break;
     index -= 1;
   }
+
+  // Forgiven days leave the denominator entirely — they were absolved, so
+  // counting them as failures would defeat the point of the freeze.
+  const assessed = scheduled.length - forgivenCount;
 
   return {
     current,
     longest: Math.max(longest, current),
-    completionRate: scheduled.length === 0 ? 0 : completedCount / scheduled.length,
+    completionRate: assessed <= 0 ? 0 : completedCount / assessed,
   };
 }
 
 /** Consecutive weeks that met the habit's weekly quota. */
-function weeklyStreak(habit, done, startKey, todayKey) {
+function weeklyStreak(habit, done, frozen, startKey, todayKey) {
   const weeks = weeksBetween(startKey, todayKey);
   const fullTarget = habit.frequency?.timesPerWeek ?? 3;
 
@@ -114,7 +140,9 @@ function weeklyStreak(habit, done, startKey, todayKey) {
 
   const satisfied = weeks.map((week, index) => {
     const isCurrentWeek = index === weeks.length - 1;
-    const hits = week.keys.filter((key) => done.has(key)).length;
+    // A forgiven day counts toward the quota — the direct analogue of "the
+    // freeze covered you" for a habit measured in weeks rather than days.
+    const hits = week.keys.filter((key) => done.has(key) || frozen.has(key)).length;
 
     completedCount += hits;
 

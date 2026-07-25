@@ -184,6 +184,94 @@ describe('computeStreak — milestones', () => {
   });
 });
 
+describe('computeStreak — streak freezes', () => {
+  it('a frozen day does not break the streak', () => {
+    // Completed the last 5 days except 3 days ago, which was frozen.
+    const missed = addDays(TODAY, -2);
+    const completed = lastNDays(5).filter((key) => key !== missed);
+
+    const result = computeStreak(habit(), completed, TODAY, new Set([missed]));
+    expect(result.current).toBe(4);
+  });
+
+  it('a frozen day does not extend the streak either', () => {
+    // Mon ✓ · Tue ❄️ · Wed ✓ is an unbroken run of two completions, not three.
+    const start = addDays(TODAY, -2);
+    const result = computeStreak(
+      habit({ startDate: start }),
+      [start, TODAY],
+      TODAY,
+      new Set([addDays(TODAY, -1)]),
+    );
+
+    expect(result.current).toBe(2);
+  });
+
+  it('still breaks on a missed day that was not frozen', () => {
+    const missed = addDays(TODAY, -2);
+    const completed = lastNDays(5).filter((key) => key !== missed);
+
+    // Freeze covers a different, irrelevant day, so the gap still bites:
+    // today and yesterday count, then the walk stops at the unprotected miss.
+    const result = computeStreak(habit(), completed, TODAY, new Set(['2025-01-01']));
+    expect(result.current).toBe(2);
+  });
+
+  it('counts a day that was both completed and frozen as a completion', () => {
+    // A partially-missed day spends a freeze, but the habits actually done
+    // that day must still earn their increment — otherwise the freeze would
+    // punish the habits you did complete.
+    const frozenDay = addDays(TODAY, -1);
+    const result = computeStreak(habit(), lastNDays(3), TODAY, new Set([frozenDay]));
+
+    expect(result.current).toBe(3);
+  });
+
+  it('excludes forgiven days from the completion rate', () => {
+    // 10 scheduled days, 5 completed, 1 of the misses forgiven — the rate is
+    // 5/9, not 5/10, because a forgiven day is not held against you.
+    const startDate = addDays(TODAY, -9);
+    const frozen = new Set([addDays(TODAY, -7)]);
+
+    const result = computeStreak(habit({ startDate }), lastNDays(5), TODAY, frozen);
+    expect(result.completionRate).toBeCloseTo(5 / 9);
+  });
+
+  it('bridges several frozen days in a row', () => {
+    const start = addDays(TODAY, -4);
+    const frozen = new Set([addDays(TODAY, -3), addDays(TODAY, -2), addDays(TODAY, -1)]);
+
+    const result = computeStreak(habit({ startDate: start }), [start, TODAY], TODAY, frozen);
+    expect(result.current).toBe(2);
+  });
+
+  it('behaves exactly as before when no freezes are passed', () => {
+    const completed = lastNDays(5);
+    expect(computeStreak(habit(), completed, TODAY)).toEqual(
+      computeStreak(habit(), completed, TODAY, new Set()),
+    );
+  });
+
+  it('lets a frozen day count toward a weekly habit quota', () => {
+    // 3× per week: two completions plus a forgiven day satisfies the week.
+    const weekly = habit({
+      startDate: '2025-06-02',
+      frequency: { type: 'weekly', daysOfWeek: [], timesPerWeek: 3 },
+    });
+
+    const withoutFreeze = computeStreak(weekly, ['2025-06-02', '2025-06-03'], TODAY);
+    const withFreeze = computeStreak(
+      weekly,
+      ['2025-06-02', '2025-06-03'],
+      TODAY,
+      new Set(['2025-06-04']),
+    );
+
+    expect(withoutFreeze.current).toBe(0);
+    expect(withFreeze.current).toBe(1);
+  });
+});
+
 describe('computeStreak — edge cases', () => {
   it('returns a zeroed result for a habit starting in the future', () => {
     const future = habit({ startDate: addDays(TODAY, 3) });
